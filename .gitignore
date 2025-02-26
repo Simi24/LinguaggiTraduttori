@@ -3,5 +3,5 @@ main.fdb_latexmk
 main.fls
 main.log
 main.out
-chapters/*.aux
+**/*.aux
 main.synctex.gz
