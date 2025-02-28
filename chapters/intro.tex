@@ -47,3 +47,131 @@ Spesso e volentieri ci capiterà di esplorare algoritmi ricorsivi per cui per ri
 L'idea è salvare in una cache i risultati parziali di una funzione,
 
 Esiste uno zucchero sintattico con cui possiamo annotare la funzione per memorizzare i risultati parziali @memoize
+
+\section{Strutture dati}
+Le strutture dati che vedremo sono:
+\begin{itemize}
+    \item alberi
+    \item grafi
+    \item pile/code
+\end{itemize}
+
+Gli alberi li useremo per rappresentare il testo che parseremo utilizzando una gerarchia del testo, e per visitare questa gerarchia utilizzeremo le visite.
+Un altro algoritmo che useremo è il backtracking che è molto utile per comprendere gli algoritmi di parsing, è una tecnica ricorsiva che tenta di risolvere i problemi con una sorta di forza bruta ma senza infilarsi nelle chiamate ricorsive anche inutili.
+
+\subsection{alberi}
+Gli alberi sono la struttura dati più comune del corso perchè c'è una forte ricorrenza tra linguaggi/parsing e ableri, inoltre non è difficile immaginare che molti concetti che vedremo sono rappresentabili come alberi (l'espressione aritmetica dell'altra volta).
+
+La forma più comune che useremo è la rappresentazione con liste di liste, la prima è la radice e poi ci sono i sotto-alberi con tutti i loro figli.
+La cosa comoda di python è che c'è l'assegnamento ordinato, viene particolare comodo l'unpacking iterabile, se metto l'* prima della variabile mi prendo tutto quello che resta:
+\begin{lstlisting}
+    a, *b = 1, 2, 3
+    print(b) #[2, 3]
+\end{lstlisting}
+
+Questo è comodo perchè verrà comodo posso prendere i figli:
+\begin{lstlisting}
+    root, *children = tree
+\end{lstlisting}
+
+Come già detto useremo la libreria Liblet per visualizzare gli alberi partendo dalle lol (liste di liste).
+\'E possibile fare l'unpacking anche di questi alberi con la medesima sintassi.
+
+\section{Algoritmi}
+Quando facciamo una visita possiamo scegliere tante strategie, l'unica questione è decidere quando operare sul nodo, possiamo decidere di operare all'inizio (quando lo incontro) oppure occuparmi del nodo al termine della visita ai figli. Gli ordini vengono chiamati:
+\begin{itemize}
+    \item pre-ordine: visito prima il nodo e poi i figli
+    \item post-ordine: visito prima i figli e poi il nodo
+\end{itemize}
+
+La visita in preordine si implementa in questo modo, posto che prende la funzione che fa i suoi conti:
+\begin{lstlisting}
+    def preorder(tree, root):
+
+\end{lstlisting}
+
+Per fare il postordine scambio lo scarico ricorsivo con la funzione che fa i calcoli, ovviamente visualizzeremo nodi in ordine diverso.
+\begin{lstlisting}
+    def postorder
+\end{lstlisting}
+
+Nel caso degli alberi è possibile visitarli anche per livelli, si chiama level order. \'E un algoritmo che non fa uso della ricorsione, generalmente si adopera una coda in cui accumulo i figli che vedo in modo tale che mi occupo per primo di quelli che metto dentro:
+
+\begin{lstlisting}
+    def levelorder(tree, visitor):
+        Q = queue()
+
+        Q.enqueue(tree)
+        while Q:
+            tree = Q.dequeue()
+            root, *children = tree
+            visitor(root)
+            for st in children: Q.enqueue(child)
+\end{lstlisting}
+
+\subsection{Alberi con attributi}
+
+Una cosa che potrebbe essere molto comoda è che potremmo avere bisogno di usare nodi con informazioni più strututrate per poter visualizare alberi arricchiti di attributi. Per fare questo useremo un albero che abbia dict come valori e che conservi il valore numerico come valore della chiave val:
+\begin{lstlisting}
+    
+\end{lstlisting} 
+
+Gli attributi generalmente vengono calcolati, ad esempio la profondità a cui siamo. Il modo in cui si calcolano segue due direzioni:
+\begin{itemize}
+    \item Attributi ereditati: calcolati per il papà e ereditati dai figli. Si usa una visita in pre-ordine.
+    \item Attributi sintetizzati: in qualche modo otteniamo prima le informazioni sui figli e poi sintetizziamo verso l'alto (tipicamente la valutazione delle espressioni è un attributo sintetizzato). Si usa una visita in post-ordine, perchè prima devo visitare i figli.
+\end{itemize}
+
+Ad esempio vediamo come spingere in giù la profondità del nodo, (nella visita ricevo che sono figlio di un nodo profondo 4), quello che fa il visitor è aggiornare quella profondità di 1 per vedere quanto è profondo lui:
+\begin{lstlisting}
+    
+\end{lstlisting}
+
+Nella sintesi il codice è più semplice da scrivere perchè possiamo usare il return per ritornare il valore al padre:
+\begin{lstlisting}
+    
+\end{lstlisting}
+
+\section{Grafi}
+Li avremo i grafi come strumenti, meno concretamente ma avremo delle visite per passare da uno stato all'altro ma non scriveremo esplicitamente grafi.
+Esistono grafi non orientati e orientati. Idealmente noi useremo i grafi orientati. Tipicamente i grafi si rappresentano con:
+\begin{itemize}
+    \item Matrice di adiacenza, NxN dove metto true e false dove c'è un collegamento. \'E O(1) per il costo computazionale ma $O(n^2)$ nello spazio.
+    \item Tengo tutte le coppie di nodi collegati se la matrice è sparsa (lista dei nodi)
+    \item Tengo le liste di adiacenza di ogni nodo, per ogni nodo tengo in una lista tutti i nodi che ha collegati
+\end{itemize}
+
+Le rappresentazioni più comode che usiamo sono la rappresentazione con lista di archi (una tupla di tuple) oppure le liste di adiacenza rappresentata da un dict di set:
+\begin{lstlisting}
+    
+\end{lstlisting}
+
+\subsection{Algoritmi}
+La visita di un grafo è un procedimento che ci porta da un nodo ad esplorare tutti gli altri, ho in qualche modo bisogno di salvarmi da qualche parte i nodi che ho visitato e quelli che devo visitare. Immaginiamo di avere bisogno di una sacca in cui mettere le cose che abbiamo bisogno di fare (ci mettiamo dentro i figli dei nodi), dobbiamo stare attenti a non rimettere dentro quello che ci è già entrato e ha senso tirare fuori gli elementi in un certo ordine:
+\begin{itemize}
+    \item FIFO: il primo nodo che metto è il primo che tolgo, i nodi sono messi in una coda. \'E la storia del level ordre. Così effettuiamo una visita in ampiezza.
+    \item LIFO: last in first out, è una pila. Effettuiamo così una visita in profondità.
+\end{itemize}
+
+Nella visita in profondità si può dare una implementazione ricorsiva (perchè la pila può essere la pila delle chiamate), quello che dobbiamo avere è una struttura dati che ci tiene quello che abbiamo già visto, per evitare di visitare di nuovo gli stessi nodi:
+\begin{lstlisting}
+    
+\end{lstlisting}
+
+La visita in ampiezza usa la coda, toglo dalla coda e lo visito e quando lo vistio lo aggiungo:
+\begin{lstlisting}
+    
+\end{lstlisting}
+
+Quello da notare nelle visite è che quello che succede nelle visite in profondità è che la pila non aumenta tanto di dimensione, l'unico problema è che se devo vedere nodi vicini è possibile che per visitarlo potrei dover fare un sacco di conti prima di arrivare a visitare quello. 
+La visita in ampiezza d'altro canto è vero che procede per livelli, ma se il grafo è denso la coda può diventare molto grande. Quindi quello che dovremo vedere negli algoritmi di parsing è questa scelta, scendo velocemente nel grafo sperando nel successo oppure è meglio scendere per passi? quello che vedremo è che in generale se non ci sono grandi strategie l'ampiezza è l'unica strada mentre se ho qualcuno che mi dice qualcosa è meglio andare giù veloce nella strada giusta.
+
+\subsection{backtracking}
+L'idea è che possiamo decidere che alcuni rami dell'albero sono buoni e altri sono cattivi. Quindi l'idea è che se mi trovo in una strada in cui posso prevedere che se sono in un certo punto in cui non c'è speranza che andando avanti nella ricorsione non troverò mai il risultato allora posso tagliare quel ramo dell'albero. Ho una specie di soluzione parziale che posso piazzare.
+
+Ho una soluzione candidata e se sono già capace di sapere se quella soluzione non va bene allora ritorno, se ho trovato il risultato lo stampo. Altrimenti vado avanti e faccio le chiamate ricorsive.
+
+Come esempio vediamo come si segmentano le parole, che è un problema fondamentale nei motori di ricerca. Inanzitutto mi procuro un elenco di parole, se segmenti non è vuota e l'ultima parola del dizionario non è in WORDS butto via, altrimenti se non mi rimane niente ho trovato tutti, altrimenti provo a spaccare in due la seguente parole in tutti i modi possibili:
+\begin{lstlisting}
+    
+\end{lstlisting}
