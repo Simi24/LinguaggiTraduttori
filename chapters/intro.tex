@@ -7,12 +7,12 @@ Vedremo anche un ripassone di algoritmi per vedere alcuni aspetti cruciali nel c
 \section{Python}
 Ci sono alcune strutture dati super comode che si possono usare con una sintassi comoda che sono le liste (strutture non omogenee), gli insiemi e i dizionari. Una cosa comoda di questi oggetti è che sono iterabili, in particolare è possibile costruire questi oggetti attraverso un meccanismo di comprehension in cui racchiudiamo tra i simboli sintattici la costruzione degli oggetti attraverso l'iterazione su un altro oggetto:
 
-\begin{lstlisting}[language=Python]
+\begin{lstlisting} 
 s = [x * x for x in range(10)]
 \end{lstlisting}
 
 Se ci metto una clausola dopo questa viene valutata:
-\begin{lstlisting}[language=Python]
+\begin{lstlisting} 
 # set comprehension: i numeri pari tra gli interi in [0, 9]
 s = {x * x for x in range(9) if x % 2 == 0}
 \end{lstlisting}
@@ -31,7 +31,7 @@ while True:
 Le funzioni sono cittadini del primo ordine, possiamo assegnarle a variabili e passarle ad altre funzioni.
 Le useremo per implementare in modo economico i visitor, algoritmi ricorsivi che navigano le strutture dati in modo ricorsivo per fare delle cose. In più vediamo le dispatch table (un modo comodo per fare l'object oriented) e la memorizzazione tramite i decoratori.
 
-\begin{lstlisting}[language=Python]
+\begin{lstlisting} 
 def quadra(x):
     return x * x
 
@@ -43,7 +43,7 @@ applica(quadra, [1, 2, 3])
 
 Noi useremo molto le liste di liste, perchè ci rappresentano gli alberi e su queste possiamo definire visite.
 
-\begin{lstlisting}[language=Python]
+\begin{lstlisting} 
 lol = [1, [2, 3], [4, [5, 6]]]
 
 #applichiamo una funzione scalare f a tutti gli elementi
@@ -66,7 +66,7 @@ Cominciamo a vedere un piccolo esempio di parsing di un esperessione. La prima p
 
 dopo di che dobbiamo definire la semantica delle operazioni, in qualche modo dobbiamo riassociare quello che osserviamo nel flusso dei token con le nostre interpretazioni. Una dispatch table è quella che associa delle informazioni a delle funzioni:
 
-\begin{lstlisting}[language=Python]
+\begin{lstlisting} 
 #semantica delle operazioni, tramite la dispatch table
     def somma(x, y):
         return x + y
@@ -81,7 +81,7 @@ dopo di che dobbiamo definire la semantica delle operazioni, in qualche modo dob
 
 A questo punto se voglio valutare l'espressione usiamo in modo iterativo la dispatch table, occhio che non stiamo rispettando le regole aritmetiche, ma associamo sempre a sinistra:
 
-\begin{lstlisting}[language=Python]
+\begin{lstlisting} 
 reuslt = int(next(tokens))
 
 while True:
@@ -98,7 +98,7 @@ Spesso e volentieri ci capiterà di esplorare algoritmi ricorsivi per cui per ri
 
 L'idea è salvare in una cache i risultati parziali di una funzione,
 
-\begin{lstlisting}[language=Python]
+\begin{lstlisting} 
 def rendi_verbosa(f):
     def f_verbosa(x):
         result = f(x)
@@ -124,7 +124,7 @@ def quadrato(x):
 \end{lstlisting}
 Esiste uno zucchero sintattico con cui possiamo annotare la funzione per memorizzare i risultati parziali @memoize
 
-\begin{lstlisting}[language=Python]
+\begin{lstlisting} 
 @memoize 
 def cubo(x):
   return x ** 3
@@ -156,7 +156,7 @@ Un altro algoritmo che useremo è il backtracking che è molto utile per compren
 Gli alberi sono la struttura dati più comune del corso perchè c'è una forte ricorrenza tra linguaggi/parsing e alberi, inoltre non è difficile immaginare che molti concetti che vedremo sono rappresentabili come alberi (l'espressione aritmetica dell'altra volta).
 
 La forma più comune che useremo è la rappresentazione con liste di liste (lol), la prima è la radice e poi ci sono i sotto-alberi con tutti i loro figli.
-\begin{lstlisting}[language=Python]
+\begin{lstlisting} 
 # [radice] 
 # [radice alberi]
 
@@ -176,7 +176,7 @@ Questo è comodo perchè verrà comodo posso prendere i figli:
 
 Come già detto useremo la libreria Liblet per visualizzare gli alberi partendo dalle lol (liste di liste).
 \'E possibile fare l'unpacking anche di questi alberi con la medesima sintassi.
-\begin{lstlisting}[language=Python]
+\begin{lstlisting} 
 from liblet import Tree, side_by_side
 
 t = Tree.from_lol(tree)
@@ -193,7 +193,7 @@ Quando facciamo una visita possiamo scegliere tante strategie, l'unica questione
 \end{itemize}
 
 La visita in preordine si implementa in questo modo, posto che prende la funzione che fa i suoi conti:
-\begin{lstlisting}[language=Python]
+\begin{lstlisting} 
 def preorder(tree, root):
     root, *children = tree
     visitor(root)
@@ -201,7 +201,7 @@ def preorder(tree, root):
 \end{lstlisting}
 
 Per fare il postordine scambio lo scarico ricorsivo con la funzione che fa i calcoli, ovviamente visualizzeremo nodi in ordine diverso.
-\begin{lstlisting}[language=Python]
+\begin{lstlisting} 
 def postorder(tree, visitor):
     root, *children = tree
     for child in children: preorder(child, visitor)
@@ -225,7 +225,7 @@ Nel caso degli alberi è possibile visitarli anche per livelli, si chiama level 
 \subsubsection{Alberi con attributi}
 
 Una cosa che potrebbe essere molto comoda è che potremmo avere bisogno di usare nodi con informazioni più strututrate per poter visualizare alberi arricchiti di attributi. Per fare questo useremo un albero che abbia dict come valori e che conservi il valore numerico come valore della chiave val:
-\begin{lstlisting}[language=Python]
+\begin{lstlisting} 
  def add_attr(tree):
   root, *children = tree
   return [{'val': root}] + [add_attr(child) for child in children]
