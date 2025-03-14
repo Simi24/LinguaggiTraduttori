@@ -100,3 +100,57 @@ Dobbiamo ricostruire l'albero di parsing da questa tabella, al momento ci accont
 \begin{lstlisting}
     
 \end{lstlisting}
+
+\section{Elminazione epsilon-regole}
+Per eleminare una epsilon regola poteri duplicare la regola, cioè se ho una regola A $ -> \epsilon$ e una produzione B $-> \alpha$ A B posso da qui crearne due con $A_1$ e $A_2$. Non sempre è così comodo. La prima osservazione che facciamo è che abbiamo trasformato G in g primo in cui non abbiamo le epsilon regole ma il costa è che per ogni epsilon regola che eliminiamo produce $2^n$ produzioni (dove n è la lunghezza della regola). Quindi sappiamo che $|G^{'}| \ge 2|G|$.
+
+La prima cosa che dobbiamo fare è il rimpiazzamento di A con $A_1$ in tutte le produzioni, poi prendo tutte le produzioni che contengono A e cancello o sostituisco con A primo le occorrenze di A, se invece on l'ho beccato in B lascio così com'è:
+\begin{lstlisting}
+
+\end{lstlisting}
+
+A questo punto per sistemarle dobbiamo fare una chiusura, perchè abbiamo prodotto delle epsilon regole, prende tutti i non terminali che non abbimo ancora visto e se quel terminale tra i lati destri di A c'è una epsilon regola faccio il rimpiazzamento e segno che l'ho fatto.
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+Osserviamo che questo procedimento non ha tolto le epsilon regole ma le ha messe inline, le mette dove accadevano, quello che succede è che queste regole prima o poi diventano unreachable quindi prima o poi questa regola la toglieremo. L'altro effetto è che solleva la epsilon fino al simbolo distinto, quindi quello che accade è che questo linguaggio potrebbe produrre la parola vuota.
+Usando i passi precedenti è semplice arrivare al passo di eliminazione:
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+\section{Eliminazione delle unit rules}
+Le regole unitarie sono quelle della forma A -> B, cioè una variabile che deriva un'altra variabile. Queste regole sono molto pericolose perchè possono creare loop, quindi la prima cosa che facciamo è eliminare i loop. Quello che mi aspetto in questo caso mi aspetto anche che ci sia una C che deriva B e A che deriva qualcos'altro che non è B. Quello che si fa è in tutte le regole dove c'è la A ci metto tutte le alternative. Dato B -> $\omega_1 | \omega_2$ e $C -> \alpha A B$ posso fare $C -> \alpha \omega_1 | \alpha \omega_2$. Faccio questa sostituzione a meno che non mi trovi nel caso del loop $B -> B$.
+Prendo tutte le produzioni che sono lunghe 1, le spacco, dico che A produce B, se B è un non terminale prendo le produzioni e faccio l'inline, faccio in modo che A produca tutte le produzioni di B e poi elimino A produce B:
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+Notiamo che questo porta ad avere una grammatica con delle cose irraggiungibili. Se voglio fare pulizia uso la tecnica dell'altra volta che ancora non è quello da cui siamo partiti perchè ad esempio ci sono dei non terminali oppure delle cose lunghe 3.
+Ci rimangono due passaggi:
+\begin{enumerate}
+    \item Eliminare i non solitari: $A -> \alpha a \beta$. dove alpha e beta non sono termina
+    \item Eliminare le produzioni più lunghe di 2
+\end{enumerate}
+
+Per ogni solitario che trovo in giro produco una regola unitaria lunga 1 e sostituisco secco, non ho bisogno neanche di fare le chiusure, cerco le produzioni A B e cerco nel lato destro e guardo cosa sono, se sono dei non terminali li lascio come sono, se sono dei terminali li sostituisco con N e la letterina, dopo di che sostitusico la produzione $Na -> a$ ad esempio:
+\begin{lstlisting}
+\end{lstlisting}
+
+Per le produzioni lunghe faccio produrre ad un prio pezzo x1, x2 poi ad un secondo pezzo A2 faccio produrre A1 x2, così via fino in findo dove avrò A produce A3 x7, partendo da una produzione $A -> x1 x2 x3 x4 x5 x6 x7$:
+\begin{lstlisting}
+   def make_binary 
+\end{lstlisting}
+
+Ora dobbiamo ricostruire l'albero di parsing, ci verrà più facile rispetto a fare una trasformazione di alberi sostituendo la tabella CYK qualcos'altro.
+
+\subsection{Costruzione albero parsing left-most}
+Dato un certo non terminale ci diamo come obiettivo costruire un fattore di una parola di input che partiva da una certa posizione con una certa lunghezza.
+Se la lunghezza è 1 devo andare a cercare una produzione della forma X i -1, questa cosa funziona perchè la tabella è costruita correttamente. Se andiamo a riprenderlo è uguale a fake parse, non metto gli alberi ma metto le produzioni:
+\begin{lstlisting}
+    
+\end{lstlisting}
+
+Bisogna considerare anche cosa succede nelle produzioni non binarie, mi piacerebbe avere una funzione derives che prende una sequenza di simboli, una i e una l e restituisce una serie di lunghezze ln tale per cui l0 è la lunghezza derivata da w0 input i + i + l0. Per farlo dovrà fare una ricorsione sulla tabella.
+Mi sono perso mannaggia a me, ma era abbastanza inseguibile, prova a vedere dal libro.
