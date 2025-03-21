@@ -154,3 +154,104 @@ Se la lunghezza è 1 devo andare a cercare una produzione della forma X i -1, qu
 
 Bisogna considerare anche cosa succede nelle produzioni non binarie, mi piacerebbe avere una funzione derives che prende una sequenza di simboli, una i e una l e restituisce una serie di lunghezze ln tale per cui l0 è la lunghezza derivata da w0 input i + i + l0. Per farlo dovrà fare una ricorsione sulla tabella.
 Mi sono perso mannaggia a me, ma era abbastanza inseguibile, prova a vedere dal libro.
+
+\section{Parsing Top-down, caso generale}
+Andiamo dal basso verso l'alto, da sinistra a destra senza occuparci particolarmente delle grammatiche.
+Cominciamo ragionando sull'automa, abbiamo un nastro che legge da sinistra verso destra e teniamo una pila in cui manteniamo lo stato del parsing e poi il controllo che facendo uso del nastro che legge in modo direzionale e della pila deve riuscire a risolvere il problema del riconoscimento, anzi meglio dovrebbe sputare l'albero di parsing della parola.
+
+Facciamo un'assunzione sulla forma della grammatica che ci viene comoda per definire il controllo, una volta definito il controllo riusciremo a rilassare questa assunzione.
+
+Proviamo a ragionare su questa grammatica:
+
+\begin{lstlisting}
+    S -> aBC
+    A -> aB | b
+    C -> a
+
+    w = aaba
+\end{lstlisting}
+
+Il riconoscimento è molto semplice se ci basiamo sulle produzioni, partendo da S vediamo che produce a, ma cosa ci facciamo della B e della C? adesso il punto cruciale dato che voglio una left-most mi occupo di B, che a questo punto posso solo sostituire con la sua produzione ottenendo aB, a questo punto sempre dato che voglio una left-most devo occuparmi della nuova B generata e non ho scelta se non sostituirla con aB, vado avanti così fino alla fine.
+%metti esempio derivazione
+
+L'idea è che inizio con una pila sulla quale ho il simbolo di partenza S, a questo punto applico la regola 0 e cancello la S e metto sulla pila in ordine inverso le produzioni che ho appena applicato (ci metto solo i non terminali). A questo punto la pila contiene CB, tolgo la B dalla cima della pila, con la sua produzione mi mangio la seconda a e metto sulla pila la B che resta dalla produzione di B, vado avanti così fino a che non ho più nulla da mangiare (mangiare sono i terminali minuscoli che vogliamo trovare che compongono la parola) e la pila è vuota.
+
+Il controllo che abbiamo possiamo considerarlo come una tabella che ha il top della pila, la head della parola e lo stack che contiene i non terminali che sono stati messi in pila:
+\begin{table}
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+        \textbf{PILA} & \textbf{HEAD} & \textbf{STACK} \\
+        \hline
+        S & a & BC \\
+        B & a & B \\
+        B & b & B \\
+        C & a & B \\
+        \hline
+    \end{tabular}
+    \caption{Tabella di controllo del parser top-down}
+\end{table}
+
+Mi voglio tenere anche la storia della derivazioni. Nella funzione della libreria mettiamo un \# alla fine della pila e della parola per sapere quando fermarci, ci feriamo quando arriviamo al cancelletto della pila e al cancelletto della parola. Questa descrizione istantanea può evolvere attraverso un passo di predizione, ho decisio che produzione applicare e quindi il passo di predizione ci porta ad avere tolto il lato sininistro della produzione dalla pila e messo il lato destro della produzione sulla pila.
+Posso semplificare applicando due nuove regole:
+\begin{enumerate}
+    \item $(x, x) \rightarrow //$ passo di predizione
+    \item $(A, ) \rightarrow \chi \in N$ passo di Match
+\end{enumerate}
+
+Quindi a questo punto il controllo o mette una cosa sulla pila oppure toglie dalla pila se sulla cima c'è un non terminale che sta anche sul nastro. Sostanzialmente la testina legge le lettere della parola, il controllo se trova sulla cima della pila un terminale (lettera minuscola) lo consuma e lo toglie dalla pila spostando la testina del nasto a destra, se trova un non terminale lo sostituisce con la produzione e lo mette sulla pila. Se la cima della pila è il cancelletto e la testina è sul cancelletto allora ho finito.
+
+Per ora abbiamo visto una grammatica in cui la parte di sinistra non aveva ripetizioni, normalmente potremmo avere una grammatica in cui:
+\begin{lstlisting}
+    S -> aB | aC
+    (S, a) -> aB
+    (S, a) -> aC
+\end{lstlisting}
+
+E questo produce una situazione di non determinismo. Per risolvere questo problema esistono tecniche teoriche e pratiche. La tecnica teorica è quella di avere un dio che dice ad ogni passo cosa fare, a noi non basta perchè non abbiamo dio direttamente da interrogare.
+Possiamo immaginarci un grafo della composizione istantanea in cui i nodi sono le istantanee sulla pila e gli archi sono i passi di predizione e match. Nel caso di non determinismo abbiamo più archi che partono dallo stesso nodo (perchè sono tutte le possibili produzioni che posso applicare). Questa la chiamiamo funzione a stato prossimo, quindi partnendo dalla pila e dal nastro (con la parola) possiamo costruire questo grafo che poi possiamo visitare. In questo grafo troviamo dei nodi morti (dead end) che non portano a nulla e dei nodi che portano a qualcosa.
+Devo trovare una tecnica di visita che mi porti a trovare i nodi che portano a qualcosa (verdi), la prima idea è una visita in ampiezza in cui posso anche fermarmi quando trovo il primo nodo verde.
+Il secondo aspetto è che potrei avere delle situazioni in cui arrivo allo stesso nodo ma in modi diversi, sempre il problema dell'ambiguità. Ad esempio in questa grammatica:
+\begin{lstlisting}
+    S -> A | B
+    A -> a | Ae
+\end{lstlisting}
+
+Quello che faccio è considerare uguali due istantanee se la pila e la testina sono uguali (non mi interessa come arrivo a quella situazione), $i = i^{'} PILA; TESTINA$. 
+
+Cominciamo ad immaginare come produrre questo grafo, concentriamoci sulla visita in ampiezza.
+La cosa più facile è costruire una funzione stato prossimo, voglio costruire una funzione che data una situazione istantanea mi restituisca tutti gli archi. Mi tengo insieme a questi archi che mi dice se questo arco deriva da un passo di produzione o di match.
+
+\begin{lstlisting}
+    def next_instdescrs(instdescr)
+\end{lstlisting}
+
+Come detto la prima cosa che vogliamo fare è una derivazione in ampiezza, metto in una coda i nodi che ho visitato sotto l'assunzione che ho visto il nodo che ha la stessa configurazione di pila e nastro. Il problema se abbiamo ricorsioni è che potremmo andare all'infinito perchè il grafo diventerebbe infinito, quindi ci fermiamo al primo stato istantaneo buono (il verde).
+\begin{lstlisting}
+    def breadth_first(G, word, verbose = False, first_only = True)
+\end{lstlisting}
+
+Ora usiamo una visita in profondità usando il back-tracking, modifichiamo il tappo di visita, non mi fermiamo alla prima ma contiamo i passi che faccio, se li supero mi fermo.
+\begin{lstlisting}
+    def breadth_first(G, word, verbose = False, first_only = True)
+\end{lstlisting}
+
+Con questo nuovo algoritmo notiamo che la coda non contiene più tanti elementi, ma 2/3 alla volta. Vediamo che il grafo scende molto più di prima.
+
+Il problema è proprio la ricorsione, cosa succede se ho regole in cui ho S come ricorsione a sinistra? del tipo:
+\begin{lstlisting}
+    S -> S a | b
+\end{lstlisting}
+
+Questo produce una situazione in cui, anche se ho una parola breve, facendo una visita in ampiezza la parola la trovo, ma se faccio una visita in profondità le derivazioni verdi non le trova, perchè non ha un loop nella pila (trova i rossi quando ritrova stati uguali) la pila aumenta all'infinito e non trova mai la parola.
+
+Un modo per correggere il tiro c'è, in particolare la presenza di epsilon regole è drammatica (la pila aumenta senza consumare il nastro), però se evitiamo le epsilon regole possiamo, data una grammatica monotonica (in cui la forma sentenziale non si può ridurre, per noi è la pila) possiamo fermarci quando la pila è troppo lunga, ad esempio se devo generare pippo e sulla pila ho più di 5 non terminali non posso generare pippo, ma genererò una parola di più di 5 caratteri. Quindi nella visita se mi infilo in una circostanza in cui so che non incontrerò mai un nodo verde allora posso fermarmi.
+Allora posso considerare una produzione produttiva se la sua produzione è più corta di quello che resta da mangiare.
+\begin{lstlisting}
+def next_instdescrs(curr):
+    def productive(pair)
+\end{lstlisting}
+
+Considero produttive solo le situazioni in cui sulla pila ho un numero di terminali sensato per la parola che ho da generare. Quindi così anche con una visita in profondità riesco a trovare la parola. Notiamo che con la perdita delle epsioln regole perdiamo la possibilità di avere una produzione infinita.
+
+Una cosa carina è che potremmo cambiare la scelta di dove andare solamente basandoci sul nostro passato (se sono arrivato allo stesso punto), posso vedere di togliere questa condizione, ovvero non mi pongo il problema di arrivare in un posto nello stesso modo (non mi interessa il passato).
