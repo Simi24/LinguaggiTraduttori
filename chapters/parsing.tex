@@ -6,16 +6,43 @@ Questi a grandi linee sono le due strategie che applicheremo per il parsing. I d
     \item \textbf{Bottom-up}: Parto dalla parola e cerco di arrivare al simbolo distinto
 \end{enumerate}
 
-Notiamo che questi approcci possono essere appliacati a tutte le grammatice, ad esempio vediamo una grammatica context sensitive:
+Notiamo che questi approcci possono essere appliacati a tutte le grammatice, ad esempio vediamo una grammatica context sensitive, nel caso top down:
 \begin{lstlisting}
+w = 'aabbcc'
+
+G = Grammar.from_string("""
+S -> a S Q | a b c
+b Q c -> b b c c  
+c Q -> Q c
+""", False)
+
+steps = (0, 0), (1, 1), (3, 3), (2, 2)
+
+for nprod, pos in steps: print(pos, G.P[nprod])
+
 \end{lstlisting}
 
-Quello che a volte conviene fare è ribaltare la grammatica, le produzioni left producono le right, questo ovviamente va a rovinare la nostra grammatica, poi possiamo mettere anche un simbolo Inizio e Fine per indicare l'inizio e la fine della produzione. Spesso lavorando in questo modo si produce una derivazione right-most (sostituisco il simbolo più a destra della derivazione non sentenziale e sostanzialmente faccio i passi da destra a sinistra dall'ultimo al primo). Posso decidere dall'alto in basso e queso produce derivazioni left-most oppure posso andare dal basso verso l'alto cercando di aggregare e ottengo derivazioni right-most ma che devo leggere dal basso verso l'alto.
+Nel caso bottom up quello che a volte conviene fare è ribaltare la grammatica, le produzioni left producono le right, questo ovviamente va a rovinare la nostra grammatica, poi possiamo mettere anche un simbolo Inizio e Fine per indicare l'inizio e la fine della produzione. Spesso lavorando in questo modo si produce una derivazione right-most (sostituisco il simbolo più a destra della derivazione non sentenziale e sostanzialmente faccio i passi da destra a sinistra dall'ultimo al primo). Posso decidere dall'alto in basso e queso produce derivazioni left-most oppure posso andare dal basso verso l'alto cercando di aggregare e ottengo derivazioni right-most ma che devo leggere dal basso verso l'alto.
+
+\begin{lstlisting}
+GR = Grammar.from_string("""
+Inizio -> a a b b c c
+a S Q -> S
+a b c -> S 
+b b c c -> b Q c
+Q c -> c Q
+S -> Fine
+""", False)
+
+steps = (0, 0), (3, 2), (4, 3), (2, 1), (1, 0), (5, 0)
+
+for nprod, pos in steps: print(pos, GR.P[nprod])
+\end{lstlisting}
 
 \section{NPDA}
 In realtà questo tipo di comportamento viene modellato nell'ambito del parsing attraverso la nozione di automa che ha bisogno di un nastro di input ed un area di memoria per tenere il processo di parsing, sostanzialmente deve fare la scansinoe della parola e mano a mano costruire l'albero di derivazione. Tutti gli algoritmi che vedremo hanno bisogno di una pila (stack) come forma di memoria per tenere traccia del processo di parsing perchè il tipo di lavoro che fanno non richiede un accesso causale alla memoria. Ma come fanno a decidere questi automi? hanno un dispositivo di controllo che è in grado di determinare cosa fare, come spostarsi sul nastro e cosa scrivere e prendere dalla pila. La cosa più intuitiva che uno può fare è avere una mente omiscente che è in grado di determinare cosa l'automa in ogni situazione deve fare. Quello che dovremo fare nel nostro lavoro è costruire questo controllo e poi trovare un modo per elminare il non determinismo perchè non avremo l'oracolo che sa tutto.
 
-Quello che accadrà è che data una descrizione della grammatica sarà possibile realizzare la struttura di controllo dell'automa in maniera automatica, potremmo pensare ad un programma che dato in pasta la grammatica G produca l'automa, questi programmi si chiamano \underline{parser generator}.
+Quello che accadrà è che data una descrizione della grammatica sarà possibile realizzare la struttura di controllo dell'automa in maniera automatica, potremmo pensare ad un programma che dato in pasto la grammatica G produca l'automa, questi programmi si chiamano \underline{parser generator}.
 Un'altro modo molto usuale, che descrive una grande famiglia di algoritmi di parsing, è quello di avere un controllo universale (che funziona per ogni grammatica) trasformando una tabella che rappresenta le informazioni che G contiene in una forma che fa in modo che il controllo sappia cosa fare, questo metodo si chiama \underline{table driven}.
 
 Nell'analizzare il comportamento di questi parser ci sono due grandezze che vogliamo vedere:
@@ -41,7 +68,7 @@ Una cosa che vale la pena considerare nell'ambito del parsing context-free esist
 Un'altra dicotomia piuttosto interessante è il modo in cui l'input viene analizzato, perchè l'automa può andare avanti ed indietro nell'input:
 \begin{enumerate}
     \item Parser direzionale: L'automa va avanti e indietro nell'input, in ordine, se lo ciuccia man mano che riceve i byte
-    \item Parse non direzionale: il parse può adoperare delle porzioni del nastro diverse, ad esempio nell'uso degli editor abbiamo la colorizzazione della sintassi, in questo caso il parser non è direzionale perchè se fosse direzionale dovrei ricostruire tutto l'albero per ogni modifica.
+    \item Parse non direzionale: il parser può adoperare delle porzioni del nastro diverse, ad esempio nell'uso degli editor abbiamo la colorizzazione della sintassi, in questo caso il parser non è direzionale perchè se fosse direzionale dovrei ricostruire tutto l'albero per ogni modifica.
 \end{enumerate}
 
 Un'altra possibile dicotomia che abbiamo già in qualche modo accennato è il fatto che purtroppo abbiamo il non determinismo e per risolvere questo potrebbe provare tutti i passi agendo:
@@ -63,7 +90,7 @@ Cosa vedermo noi:
 \end{enumerate}
 
 \section{CYK parser}
-L'algoritmo CYK si basa su una tabella che rappresenta la comprensione temporanea che ha l'algoritmo del processo di parsing (della costruzione dell'albero di parsgin) e questa tabella più essere facilmente riempita nel caso in cui la grammatica abbia una forma semplificata che per il momento noi assumeremo. Le regole che vorremo avranno solo questa forma, una produzione non terminale o di una coppia:
+L'algoritmo CYK si basa su una tabella che rappresenta la comprensione temporanea che ha l'algoritmo del processo di parsing (della costruzione dell'albero di parsing) e questa tabella più essere facilmente riempita nel caso in cui la grammatica abbia una forma semplificata che per il momento noi assumeremo. Le regole che vorremo avranno solo questa forma, una produzione non terminale o di una coppia:
 \begin{lstlisting}
     A -> BC
     A -> a
@@ -71,8 +98,21 @@ L'algoritmo CYK si basa su una tabella che rappresenta la comprensione temporane
 
 La tabella di questo algoritmo è fatta così, sulla base abbiamo la parola e poi ha una serie di celle in cui in ciascuna cella contiene l'informazione della sotto-parola la cui lunghezza è data dalla riga in cui mi trovo e che raccontano l'idea che si è fatto l'algoritmo di parsing della stringa lunga due a partire dalla posizione della tabella sotto. Nella posizione i,l rappresenta l'informazione che ho sul parsing del prefisso della parola che comincia lì ed è lunga l:
 \begin{lstlisting}
+INPUT = 'unaprova'
 
+n = len(INPUT)
+
+R = CYKTable()
+for l in range(1, n + 1):
+  for i in range(1, n - l + 2): 
+    R[i, l] = INPUT[(i) - 1: (i + l) - 1]
 \end{lstlisting}
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[scale=1]{images/Parsing/tabellaR.png}
+\end{figure}
+
 
 Osserviamo che la tabelle può essere riempita in due modi, siccome ogni posizione riguarda un sottoinsieme la posso riempire in due modi:
 \begin{enumerate}
@@ -81,76 +121,362 @@ Osserviamo che la tabelle può essere riempita in due modi, siccome ogni posizio
 \end{enumerate}
 
 \begin{lstlisting}
-    
+ def offline(fill, n):
+  R = CYKTable()
+  for l in range(1, n + 1):
+    for i in range(1, n - l + 2): 
+      R[i, l] = fill(R, i, l)
+  return R 
+
+def online(fill, n):
+  R = CYKTable()
+  for d in range(1, n + 1):
+    for i in range(d, 0, -1):
+      R[i, d - i + 1] = fill(R, i, d - i + 1)
+  return R
 \end{lstlisting}
+
 Noi ovviamente non la riempiremo di parti di parola ma di produzioni, per filtrare le produzioni useremo la funzione di python filter che filtra cose in base ad una funzione che gli passiamo.
 Quando siamo in alto nella tabella dobbiamo mettere una produzione che da A produce BC, perchè vogliamo metterci qualcosa che produce quello che c'è sotto quindi sotto dobbiamo andare a vedere se B produce un pezzo di quello che c'è sotto e la C il resto.
 
 In buona sostanza se sono a lunghezza 1 ci metto tutti i terminali dove A produce a dove a è proprio la parola (lettera negli esempi) che sto cercando, se sono a lunghezza 2 metto tutte le produzioni che producono due terminali B e C dove B produce la parola da i a k e c da k in poi.
 \begin{lstlisting}
-    
+ def cyk_fill(G, INPUT):
+  def fill(R, i, l):
+    res = set()
+    if l == 1:
+      for A, (a,) in filter(Production.such_that(rhs_len = 1), G.P): 
+        if a == INPUT[i - 1]: res.add(A)
+    else:
+      for k in range(1, l):
+        for A, (B, C) in filter(Production.such_that(rhs_len = 2), G.P):
+          if B in R[i, k] and C in R[i + k, l - k]: res.add(A)
+    return res
+  return fill
 \end{lstlisting}
+
+Vediamo degli esempi su una grammatica $a^n$:
+\begin{lstlisting}
+G = Grammar.from_string("""
+S -> A S
+A -> a
+S -> .
+""")
+
+INPUT = 'aaa.'
+
+online(cyk_fill(G, INPUT), len(INPUT))
+\end{lstlisting}
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[scale=1]{images/Parsing/tabellaRes1.png}
+\end{figure}
+
+\begin{lstlisting}
+ INPUT = 'aa.a.'
+
+online(cyk_fill(G, INPUT), len(INPUT))
+\end{lstlisting}
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[scale=1]{images/Parsing/tabellaRes2.png}
+\end{figure}
+
+\begin{lstlisting}
+# fig. 4.15, pag. 123 
+
+G = Grammar.from_string("""
+Number -> 0|1|2|3|4|5|6|7|8|9 
+Number -> Integer Digit
+Number -> N1 Scale' | Integer Fraction
+N1 -> Integer Fraction
+Integer -> 0|1|2|3|4|5|6|7|8|9 
+Integer -> Integer Digit
+Fraction -> T1 Integer
+T1 -> .
+Scale' -> N2 Integer
+N2 -> T2 Sign
+T2 -> e
+Digit -> 0|1|2|3|4|5|6|7|8|9 
+Sign -> + | -
+""")
+\end{lstlisting}
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[scale=1]{images/Parsing/tabellaResComplesso.png}
+\end{figure}
+
 
 Negli esempi si vede bene che sotto mettiamo tutti i terminali delle produzioni a sinistra che producono la parola o lettera (ad esempio A produce a quindi ci metto A per tutte le volte che ci sono a nella parola). Poi per le celle sopra ci chiediamo se c'è una produzione che produce $A \rightarrow BC$ dove B produce la sotto parola da i a k e C da k in poi (ad esempio $S \rightarrow A, S$).
 
 Per guardare se la parola fa parte del linguaggio basta guardare la cella in alto della tabella, se è riempita significa che è ok.
 \subsection{Albero di parsing}
-Dobbiamo ricostruire l'albero di parsing da questa tabella, al momento ci accontentiamo di costurire l'albero i cui nodi sono i non terminali e gli archi le produzioni (non ha dentro le produzioni). Non è super difficile perchè possiamo approcciare questa cosa ricorsviamente
+Dobbiamo ricostruire l'albero di parsing da questa tabella, al momento ci accontentiamo di costurire l'albero i cui nodi sono i non terminali e gli archi le produzioni (non ha dentro le produzioni). Non è super difficile perchè possiamo approcciare questa cosa ricorsviamente.
+Scriviamo una funzione ricorsiva fake\_parse che (usando la tabella R, la grammatica G e l'input INPUT) dato un non terminale, il punto d'inizio e la lunghezza, restituisca l'albero di parsing radicato in quel non terminale e che deriva la sottostringa specificata.
 
 \begin{lstlisting}
-    
+def cyk_fill(G, INPUT):
+  def fill(R, i, l):
+    res = set()
+    if l == 1:
+      for A, (a,) in filter(Production.such_that(rhs_len = 1), G.P): 
+        if a == INPUT[i - 1]: res.add(A)
+    else:
+      for k in range(1, l):
+        for A, (B, C) in filter(Production.such_that(rhs_len = 2), G.P):
+          if B in R[i, k] and C in R[i + k, l - k]: res.add(A)
+    return res
+  return fill
 \end{lstlisting}
 
-\section{Elminazione epsilon-regole}
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[scale=1]{images/Parsing/fake_parser.png}
+\end{figure}
+
+\subsection{Riduzione in forma normale di Chomsky}
+La forma normale di Chomsky è una forma normale in cui tutte le produzioni sono della forma:
+\begin{lstlisting}
+    A -> BC
+    A -> a
+\end{lstlisting}
+
+Per ottenere una grammatica in forma normale di Chomsky dobbiamo fare due passaggi:
+\begin{enumerate}
+    \item Eliminare le regole unitarie
+    \item Eliminare le produzioni più lunghe di 2, riduzione in forma normale, trasformazioni produzione non solitarie
+    \item Eliminare le epsilon regole
+\end{enumerate}
+
+\begin{lstlisting}
+def remove_unproductive_unreachable(G):
+  def find_productive(G):
+    @closure
+    def find(prod):
+      return prod | {A for A, a in G.P if set(a) <= prod}
+    return find(G.T)
+  def find_reachable(G):
+    @closure
+    def find(reach):
+      return reach | union_of(set(a) for A, a in G.P if A in reach)
+    return find({G.S})
+  Gp = G.restrict_to(find_productive(G))
+  return Gp.restrict_to(find_reachable(Gp))
+
+def cyk(G, INPUT):
+  def fill(R, i, l):
+    res = set()
+    if l == 1:
+      for A, (a,) in filter(Production.such_that(rhs_len = 1), G.P): 
+        if a == INPUT[i - 1]: res.add(A)
+    else:
+      for k in range(1, l):
+        for A, (B, C) in filter(Production.such_that(rhs_len = 2), G.P):
+          if B in R[i, k] and C in R[i + k, l - k]: res.add(A)
+    return res
+  R = CYKTable()
+  for l in range(1, len(INPUT) + 1):
+    for i in range(1, len(INPUT) - l + 2):
+      R[i, l] = fill(R, i, l)
+  return R
+\end{lstlisting}
+
+
+\subsection{Elminazione epsilon-regole}
+Una epsilon regola è una regola della forma A -> $\epsilon$, cioè una regola che produce la parola vuota.
 Per eleminare una epsilon regola poteri duplicare la regola, cioè se ho una regola A $ -> \epsilon$ e una produzione B $-> \alpha$ A B posso da qui crearne due con $A_1$ e $A_2$. Non sempre è così comodo. La prima osservazione che facciamo è che abbiamo trasformato G in g primo in cui non abbiamo le epsilon regole ma il costa è che per ogni epsilon regola che eliminiamo produce $2^n$ produzioni (dove n è la lunghezza della regola). Quindi sappiamo che $|G^{'}| \ge 2|G|$.
+Sostanzialmente con due passi ottnuti tramite chiusura posso rimpiazzarte un simbolo nei lati destri con replace\_in\_rhs e quindi applicare il primo passo a tutti i simboli che compaiono in una epsilon regolan con inline\_epsilon\_rules.
 
 La prima cosa che dobbiamo fare è il rimpiazzamento di A con $A_1$ in tutte le produzioni, poi prendo tutte le produzioni che contengono A e cancello o sostituisco con A primo le occorrenze di A, se invece on l'ho beccato in B lascio così com'è:
 \begin{lstlisting}
+@closure
+def replace_in_rhs(G, A):
+  Ap = A + '''
+  prods = set()
+  for B, Beta in G.P:
+    if A in Beta:
+      pos = Beta.index(A)
+      prods.add(Production(B, Beta[:pos] + Beta[pos + 1:]))
+      prods.add(Production(B, Beta[:pos] + (Ap, ) + Beta[pos + 1:]))
+    else:
+      prods.add(Production(B, Beta))
+  return Grammar(G.N | {Ap}, G.T, prods, G.S)
 
+# esempio d'uso
+
+U = Grammar.from_string("""
+S -> x A y A z
+A -> a
+""")
+replace_in_rhs(U, 'A').P
 \end{lstlisting}
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[scale=1]{images/Parsing/esReplace.png}
+\end{figure}
 
 A questo punto per sistemarle dobbiamo fare una chiusura, perchè abbiamo prodotto delle epsilon regole, prende tutti i non terminali che non abbimo ancora visto e se quel terminale tra i lati destri di A c'è una epsilon regola faccio il rimpiazzamento e segno che l'ho fatto.
 \begin{lstlisting}
-  
+@closure
+def inline_epsilon_rules(G_seen):
+  G, seen = G_seen
+  for A in G.N - seen:
+    if (epsilon, ) in G.alternatives(A):
+      return replace_in_rhs(G, A), seen | {A}
+  return G, seen
+
+# esempio d'uso
+
+U = Grammar.from_string("""
+S -> A
+A -> B C
+B -> epsilon
+C -> epsilon
+""")
+U, _ = inline_epsilon_rules((U, set()))
+
+U.P
 \end{lstlisting}
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[scale=1]{images/Parsing/esInline.png}
+\end{figure}
 
 Osserviamo che questo procedimento non ha tolto le epsilon regole ma le ha messe inline, le mette dove accadevano, quello che succede è che queste regole prima o poi diventano unreachable quindi prima o poi questa regola la toglieremo. L'altro effetto è che solleva la epsilon fino al simbolo distinto, quindi quello che accade è che questo linguaggio potrebbe produrre la parola vuota.
 Usando i passi precedenti è semplice arrivare al passo di eliminazione:
 \begin{lstlisting}
-  
+def eliminate_epsilon_rules(G):
+  Gp, _ = inline_epsilon_rules((G, set()))
+  prods = set(Gp.P)
+  for Ap in Gp.N - G.N:
+    A = Ap[:-1]
+    for alpha in set(Gp.alternatives(A)) - {(epsilon, )}:
+      prods.add(Production(Ap, alpha))
+  return Grammar(Gp.N, Gp.T, prods, Gp.S)
+
+# esempio d'uso (fig. 4.10, pag. 120)
+
+U = Grammar.from_string("""
+S -> L a M
+L -> L M 
+L -> epsilon
+M -> M M
+M -> epsilon
+""")
+
+eliminate_epsilon_rules(U).P
 \end{lstlisting}
 
-\section{Eliminazione delle unit rules}
-Le regole unitarie sono quelle della forma A -> B, cioè una variabile che deriva un'altra variabile. Queste regole sono molto pericolose perchè possono creare loop, quindi la prima cosa che facciamo è eliminare i loop. Quello che mi aspetto in questo caso mi aspetto anche che ci sia una C che deriva B e A che deriva qualcos'altro che non è B. Quello che si fa è in tutte le regole dove c'è la A ci metto tutte le alternative. Dato B -> $\omega_1 | \omega_2$ e $C -> \alpha A B$ posso fare $C -> \alpha \omega_1 | \alpha \omega_2$. Faccio questa sostituzione a meno che non mi trovi nel caso del loop $B -> B$.
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[scale=1]{images/Parsing/esEliminateEpsilon.png}
+\end{figure}
+
+\subsection{Eliminazione delle unit rules}
+Le regole unitarie sono quelle della forma A -> B, cioè una variabile che deriva un'altra variabile. In questo caso mi aspetto anche che ci sia una C che deriva B e A che deriva qualcos'altro che non è B. Quello che si fa è in tutte le regole dove c'è la A ci metto tutte le alternative. Dato B -> $\omega_1 | \omega_2$ e $C -> \alpha A B$ posso fare $C -> \alpha \omega_1 | \alpha \omega_2$. Faccio questa sostituzione a meno che non mi trovi nel caso del loop $B -> B$.
 Prendo tutte le produzioni che sono lunghe 1, le spacco, dico che A produce B, se B è un non terminale prendo le produzioni e faccio l'inline, faccio in modo che A produca tutte le produzioni di B e poi elimino A produce B:
 \begin{lstlisting}
-  
+def eliminate_unit_rules(G):
+  @closure
+  def eliminate(G_seen):
+    G, seen = G_seen
+    for P in set(filter(Production.such_that(rhs_len = 1), G.P)) - seen:
+      A, (B, ) = P
+      if B in G.N:
+        prods = (set(G.P) | {Production(A, alpha) for alpha in G.alternatives(B)}) - {P}
+        return Grammar(G.N, G.T, prods, G.S), seen | {P}
+    return G, seen
+  return eliminate((G, set()))[0]
+
+# esempio d'uso
+
+U = Grammar.from_string("""
+S -> A
+A -> B
+B -> A | b
+""")
+
+eliminate_unit_rules(U).P
 \end{lstlisting}
 
-Notiamo che questo porta ad avere una grammatica con delle cose irraggiungibili. Se voglio fare pulizia uso la tecnica dell'altra volta che ancora non è quello da cui siamo partiti perchè ad esempio ci sono dei non terminali oppure delle cose lunghe 3.
+Notiamo che questo porta ad avere una grammatica con delle cose irraggiungibili (dopo che elminiamo le epsilon regole e i non unitari). Se voglio fare pulizia uso la tecnica dell'altra volta, applico il metodo remove\_unproductive\_unreachable, ma ancora non è quello da cui siamo partiti perchè ad esempio ci sono dei non terminali oppure delle cose lunghe 3.
 Ci rimangono due passaggi:
 \begin{enumerate}
-    \item Eliminare i non solitari: $A -> \alpha a \beta$. dove alpha e beta non sono termina
+    \item Eliminare i non solitari: $A -> \alpha a \beta$. dove alpha e beta non sono terminali
     \item Eliminare le produzioni più lunghe di 2
 \end{enumerate}
 
+\subsection{Eliminazione i non solitari}
+Un solitario e' un simbolo non terminale se esiste almento una derivazione in cui appare, contribuendo alla produzione di stringhe terminali. 
 Per ogni solitario che trovo in giro produco una regola unitaria lunga 1 e sostituisco secco, non ho bisogno neanche di fare le chiusure, cerco le produzioni A B e cerco nel lato destro e guardo cosa sono, se sono dei non terminali li lascio come sono, se sono dei terminali li sostituisco con N e la letterina, dopo di che sostitusico la produzione $Na -> a$ ad esempio:
 \begin{lstlisting}
+def transform_nonsolitary(G):
+  prods = set()
+  for A, alpha in G.P:
+    prods.add(Production(A, [f'N{x}' if x in G.T else x for x in alpha] if len(alpha) > 1 else alpha))
+    prods |= {Production(f'N{x}', (x, )) for x in alpha if x in G.T and len(alpha) > 1}
+  return Grammar(G.N | {A for A, alpha in prods}, G.T, prods, G.S)
+
+U = Grammar.from_string("""
+S -> x S y S x
+""")
+
+transform_nonsolitary(U).P
+
+Ny Y(0)
+Nx X(1)
+S Nx S Ny S Nx
 \end{lstlisting}
 
-Per le produzioni lunghe faccio produrre ad un prio pezzo x1, x2 poi ad un secondo pezzo A2 faccio produrre A1 x2, così via fino in findo dove avrò A produce A3 x7, partendo da una produzione $A -> x1 x2 x3 x4 x5 x6 x7$:
+Non e' sempre cosi' facile, per le produzioni lunghe faccio produrre ad un primo pezzo A1, x1, x2 poi ad un secondo pezzo A2 faccio produrre A1 x2, così via fino in findo dove avrò A produce A3 x7, partendo da una produzione $A -> x1 x2 x3 x4 x5 x6 x7$:
 \begin{lstlisting}
-   def make_binary 
-\end{lstlisting}
+def make_binary(G):
+  prods = set()
+  for A, alpha in G.P:
+    if len(alpha) > 2:
+      Ai = f'{A}{1}'
+      prods.add(Production(Ai, alpha[:2]))
+      for i, Xi in enumerate(alpha[2:-1], 2):
+          prods.add(Production(f'{A}{i}', (Ai, Xi)))
+          Ai = f'{A}{i}'
+      prods.add(Production(A, (Ai, alpha[-1])))
+    else:
+      prods.add(Production(A, alpha))
+  return Grammar(G.N | {A for A, alpha in prods}, G.T, prods, G.S)
+\end{lstlisting} 
 
 Ora dobbiamo ricostruire l'albero di parsing, ci verrà più facile rispetto a fare una trasformazione di alberi sostituendo la tabella CYK qualcos'altro.
 
 \subsection{Costruzione albero parsing left-most}
 Dato un certo non terminale ci diamo come obiettivo costruire un fattore di una parola di input che partiva da una certa posizione con una certa lunghezza.
-Se la lunghezza è 1 devo andare a cercare una produzione della forma X i -1, questa cosa funziona perchè la tabella è costruita correttamente. Se andiamo a riprenderlo è uguale a fake parse, non metto gli alberi ma metto le produzioni:
+Se la lunghezza è 1 devo andare a cercare una produzione della forma X i -1, questa cosa funziona perchè la tabella è costruita correttamente. Se andiamo a riprenderlo è uguale a fake parse, non metto gli alberi ma metto le produzioni. Quindi per ottenere una derivazione leftmost ragioniamo come per la funzione fake\_parse ma invece di restituire un albero restituiamo l'indice della produzione in gioco:
 \begin{lstlisting}
-    
+ def get_leftmost_prods(G, R, INPUT):
+  def prods(X, i, l):
+    if l == 1:
+      return [G.P.index(Production(X, (INPUT[i - 1],)))]
+    for A, (B, C) in filter(Production.such_that(lhs = X, rhs_len = 2), G.P):
+      for k in range(1, l):
+        if B in R[i, k] and C in R[i + k, l - k]:
+          return [G.P.index(Production(A, (B, C)))] + prods(B, i, k) + prods(C, i + k, l - k)
+  return prods(G.S, 1, len(INPUT))     
+
+leftmost_prods = get_leftmost_prods(G_cnf, R, INPUT)
+leftmost_prods
+[28, 31, 9, 12, 7, 37, 20, 11, 1, 6, 32, 15, 30]
+d = Derivation(G_cnf).leftmost(leftmost_prods)
+ProductionGraph(d)
 \end{lstlisting}
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[scale=1]{images/Parsing/derivazioneLeftmostCMK.png}
+\end{figure}
 
 Bisogna considerare anche cosa succede nelle produzioni non binarie, mi piacerebbe avere una funzione derives che prende una sequenza di simboli, una i e una l e restituisce una serie di lunghezze ln tale per cui l0 è la lunghezza derivata da w0 input i + i + l0. Per farlo dovrà fare una ricorsione sulla tabella.
 Mi sono perso mannaggia a me, ma era abbastanza inseguibile, prova a vedere dal libro.
