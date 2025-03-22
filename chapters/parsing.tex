@@ -527,6 +527,37 @@ Posso semplificare applicando due nuove regole:
 
 Quindi a questo punto il controllo o mette una cosa sulla pila oppure toglie dalla pila se sulla cima c'è un non terminale che sta anche sul nastro. Sostanzialmente la testina legge le lettere della parola, il controllo se trova sulla cima della pila un terminale (lettera minuscola) lo consuma e lo toglie dalla pila spostando la testina del nasto a destra, se trova un non terminale lo sostituisce con la produzione e lo mette sulla pila. Se la cima della pila è il cancelletto e la testina è sul cancelletto allora ho finito.
 
+In questo esempio vediamo una simulazione su visite del DAG delle computazioni, in ogni nodo i conserviamo la descrizione istantanea piu' la derivazione che ha condotto a tale derivazione (la grammatica e' quella di prima). Notiamo che all'inizio la pila viene mostrata da sinistra a destra, laa cima della pila e' il carattere piu' a sinistra e che sulla pila all'inizio e' stato aggiunto il simbolo terminale e poi la S e in coda al nastro e' stato aggiunto il simbolo terminale mentre tra parentesi abbiamo il passo di derivazione che ha portato a quella situazione.:
+\begin{lstlisting}
+i = TopDownInstantaneousDescription(G, 'aaba')
+
+output: (), S#, |aaba#
+
+i = i.predict(G.P[0])
+output: (s -> a B C,), aBC#, |aaba#
+
+i = i.match()
+output: (S -> a B C,), BC#, a | aba#
+
+i = i.predict(G.P[2])
+output: (S -> a B C, B -> a B, B -> b), bC#, aa|ba#
+
+.
+.
+.
+
+i = i.match()
+output: (S -> a B C, B -> a B, B -> b, C -> a), #, aaba|#
+\end{lstlisting}
+
+Notiamo che i passi raccolti (nello stesso ordine di quello con cui sono usati da predict) sono quelli di una derivazione leftmost:
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[scale=0.5]{images/Parsing/derivazioneLeftmostTopDown.png}
+\end{figure}
+
+\subsection{Funzione stato prossimo}
 Per ora abbiamo visto una grammatica in cui la parte di sinistra non aveva ripetizioni, normalmente potremmo avere una grammatica in cui:
 \begin{lstlisting}
     S -> aB | aC
@@ -546,20 +577,69 @@ Il secondo aspetto è che potrei avere delle situazioni in cui arrivo allo stess
 Quello che faccio è considerare uguali due istantanee se la pila e la testina sono uguali (non mi interessa come arrivo a quella situazione), $i = i^{'} PILA; TESTINA$. 
 
 Cominciamo ad immaginare come produrre questo grafo, concentriamoci sulla visita in ampiezza.
-La cosa più facile è costruire una funzione stato prossimo, voglio costruire una funzione che data una situazione istantanea mi restituisca tutti gli archi. Mi tengo insieme a questi archi che mi dice se questo arco deriva da un passo di produzione o di match.
+La cosa più facile è costruire una funzione stato prossimo, voglio costruire una funzione che data una situazione istantanea mi restituisca tutti gli archi. Mi tengo insieme a questi archi un'etichetta che mi dice se questo arco deriva da un passo di produzione o di match.
 
 \begin{lstlisting}
-    def next_instdescrs(instdescr)
+# restituisce un elenco di coppie (s, tid) 
+# dove s e 'match', o la str(P) dove P e una produzione di G e bid e una TopDownInstantaneousDescription
+# ottenuta applicando il match o la predizione secondo P a curr
+
+def next_instdescrs(instdescr):
+  if instdescr.is_done(): return []
+  G = instdescr.G
+  top = instdescr.top()
+  if top in G.T:
+    return [('match', instdescr.match())] if top == instdescr.head() else []
+  else:
+    return [(str(P), instdescr.predict(P)) for P in filter(Production.such_that(lhs = top), G.P)]
 \end{lstlisting}
 
-Come detto la prima cosa che vogliamo fare è una derivazione in ampiezza, metto in una coda i nodi che ho visitato sotto l'assunzione che ho visto il nodo che ha la stessa configurazione di pila e nastro. Il problema se abbiamo ricorsioni è che potremmo andare all'infinito perchè il grafo diventerebbe infinito, quindi ci fermiamo al primo stato istantaneo buono (il verde).
+Come detto la prima cosa che vogliamo fare è una derivazione in ampiezza, metto in una coda i nodi che ho visitato sotto l'assunzione che ho visto il nodo che ha la stessa configurazione di pila e nastro. Il problema se abbiamo ricorsioni è che potremmo andare all'infinito perchè il grafo diventerebbe infinito, quindi ci fermiamo al primo stato istantaneo buono (il verde) questo e' quello che fa il parametro first\_only.
 \begin{lstlisting}
-    def breadth_first(G, word, verbose = False, first_only = True)
+def breadth_first(G, word, verbose = False, first_only = True):
+  graph = prepare_graph()
+  q = Queue()
+  q.enqueue(TopDownInstantaneousDescription(G, word))
+  seen = {q.Q[0]}
+  derivations = []
+  while q:
+    if first_only and derivations: break
+    if verbose:
+      for i in q: print(i)
+      print('-' * 60)
+    curr = q.dequeue()
+    for what, nxt in next_instdescrs(curr):
+      graph.edge(curr, nxt, gv_args={'label': what})
+      if nxt.is_done(): derivations.append(nxt.steps)
+      if not nxt in seen: 
+        seen.add(nxt)
+        q.enqueue(nxt)  
+  return derivations, graph
 \end{lstlisting}
 
-Ora usiamo una visita in profondità usando il back-tracking, modifichiamo il tappo di visita, non mi fermiamo alla prima ma contiamo i passi che faccio, se li supero mi fermo.
+Ora usiamo una visita in profondità, modifichiamo il tappo di visita, non mi fermiamo alla prima ma contiamo i passi che faccio, se li supero mi fermo.
 \begin{lstlisting}
-    def breadth_first(G, word, verbose = False, first_only = True)
+def depth_first(G, word, verbose = False, max_steps = -1, use_seen = True):
+  graph = prepare_graph()
+  s = Stack()
+  s.push(TopDownInstantaneousDescription(G, word))
+  seen = {s.S[0]}
+  derivations = []
+  steps = 0
+  while s:
+    if steps > max_steps > -1: break
+    steps += 1
+    if verbose:
+      for i in s: print(i)
+      print('-' * 60)
+    curr = s.pop()
+    for what, nxt in next_instdescrs(curr):
+      graph.edge(curr, nxt, gv_args={'label': what})
+      if nxt.is_done(): derivations.append(nxt.steps)
+      if not nxt in seen: 
+        if use_seen: seen.add(nxt)
+        s.push(nxt)  
+  return derivations, graph
 \end{lstlisting}
 
 Con questo nuovo algoritmo notiamo che la coda non contiene più tanti elementi, ma 2/3 alla volta. Vediamo che il grafo scende molto più di prima.
@@ -575,9 +655,12 @@ Un modo per correggere il tiro c'è, in particolare la presenza di epsilon regol
 Allora posso considerare una produzione produttiva se la sua produzione è più corta di quello che resta da mangiare.
 \begin{lstlisting}
 def next_instdescrs(curr):
-    def productive(pair)
+  def productive(pair):
+    _, instdescr = pair
+    return len(instdescr.stack) <= (len(instdescr.tape) - instdescr.head_pos)
+  return list(filter(productive, original_next_instdescrs(curr)))
 \end{lstlisting}
 
 Considero produttive solo le situazioni in cui sulla pila ho un numero di terminali sensato per la parola che ho da generare. Quindi così anche con una visita in profondità riesco a trovare la parola. Notiamo che con la perdita delle epsioln regole perdiamo la possibilità di avere una produzione infinita.
 
-Una cosa carina è che potremmo cambiare la scelta di dove andare solamente basandoci sul nostro passato (se sono arrivato allo stesso punto), posso vedere di togliere questa condizione, ovvero non mi pongo il problema di arrivare in un posto nello stesso modo (non mi interessa il passato).
+Una cosa carina è che potremmo cambiare la scelta di dove andare solamente basandoci sul nostro passato (se sono arrivato allo stesso punto), posso vedere di togliere questa condizione, ovvero non mi pongo il problema di arrivare in un posto nello stesso modo (non mi interessa il passato). Ovvero se introduciamo l'ambiguità quello che troveremo e' alla fine sempre tutte le derivazioni con la differenza che potremmo avere archi doppi allo stesso nodo, questo perche' potrei arrivare a quel nodo ma con storie diverse quindi togliendo la condizione di uguaglianza tra istantanee potrei avere piu' archi che arrivano allo stesso nodo.
