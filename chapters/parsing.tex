@@ -664,3 +664,112 @@ def next_instdescrs(curr):
 Considero produttive solo le situazioni in cui sulla pila ho un numero di terminali sensato per la parola che ho da generare. Quindi così anche con una visita in profondità riesco a trovare la parola. Notiamo che con la perdita delle epsioln regole perdiamo la possibilità di avere una produzione infinita.
 
 Una cosa carina è che potremmo cambiare la scelta di dove andare solamente basandoci sul nostro passato (se sono arrivato allo stesso punto), posso vedere di togliere questa condizione, ovvero non mi pongo il problema di arrivare in un posto nello stesso modo (non mi interessa il passato). Ovvero se introduciamo l'ambiguità quello che troveremo e' alla fine sempre tutte le derivazioni con la differenza che potremmo avere archi doppi allo stesso nodo, questo perche' potrei arrivare a quel nodo ma con storie diverse quindi togliendo la condizione di uguaglianza tra istantanee potrei avere piu' archi che arrivano allo stesso nodo.
+
+\section{Parsing Ricorsivo Discendente}
+
+\subsection{Eliminare Ricorsione a Sinistra}
+Eliminare la ricorsione è una cosa molto comoda anche per poter usare alcuni parser generator che funzionano solo se non c'è la ricorsione quindi è un trucco su cui vale la pena fare un discorso.
+
+Il caso più elementare, se abbiamo un terminale che ha una ricorsione a sinistra questa cosa vorrebbe generare un ciclo, una lista finita di elementi:
+\[
+A \rightarrow A \alpha_1 | A\alpha_2 ... | \beta_1 | \beta_2 ...
+\]
+
+Quindi quello che faremo è introdurre dei nuovi terminali, la testa si occupa di generare i beta, poi similmente si definisce un A di coda che permette di ottenere gli alpha:
+\[
+A_H \rightarrow \beta_1 | \beta_2 ...
+B_T \rightarrow \alpha_1 | \alpha_2 ...
+\]
+
+Poi in realtà per generare la lista devo riportare la ricorsione, la spostiamo a destra inserendo un nuovo terminale:
+\[
+A_{TS} \rightarrow A_T A_{TS}
+\]
+
+Dopo di che posso generare uno dei simboli A:
+\[
+A \rightarrow A_H A_{TS} | A_H
+\]
+
+Abbiamo risolto la ricorsione diretta ma manca quella indiretta, una cosa del genere:
+\[
+A \rightarrow B \alpha
+B \rightarrow C \gamma
+C \rightarrow A \beta
+\]
+
+L'idea in questo caso è ancora strutturalmente semplice. Un modo semplice per risolvere il problema sarebbe quello di ordinare i non terminali, se potessi chiamarli:
+\[
+A_1 < A_2 < ... < A_n
+\]
+
+Il problema di questo caso è che parto da un non terminale e torno allo stesso. Quello che voglio riscrivere tutte le produzioni per cui quelle in cui non c'è un non terminale come primo simbolo deve essere minore di quello che c'è a destra (voglio evitare catene):
+\[
+A_i \rightarrow A_j \alpha i < j
+\]
+
+Il procedimento è iterativo e si parte con $i = 1$, in questo caso non voglio avere cose della ricorsione diretta $A_1 \rightarrow A_1 \alpha_1 | \alpha_2 ...$ quindi lo abbiamo fatto prima possiamo quindi creare una grammatica senza questa ricorsione. Ora passo a $i=2$ e qui avrò cose del genere:
+\[
+A_2 \rightarrow A_1 \alpha A_2 \alpha A_3 \alpha ...
+\]
+
+Prendo questa grammatica e sostituisco gli $A_1$ con quelli che abbiamo sistemato prima. Andando avanti così riusciamo ad avere una grammatica G senza ricorsione a sinistra.
+
+\subsection{Prefix-Free}
+
+Adesso c'è un ulteriore richiesta che è più sottile, vogliamo parlare dei prefix-free, non è possibile avere un prefisso proprio dentro un linguaggio.
+Possiamo dire che una grammatica è prefix free se e solo se tutti i non terminali della grammatica sono prefix free. Non è detto che una grammatica si possa trasformare in prefix free, quindi noi lavoreremo sull'ipotesi che la grammatica sia prefix free.
+
+\subsection{Parsing Ricorsivo Discendente}
+L'idea è che vorremmo scrivere una funzione parse che prende in input un simbolo x e un pezzo di forma sentenziale w e restituisce una coppia booleano $w^{'}$ tale per cui se per come è fatta la grammtica x effettua il parsing di un prefisso di w allora restituisce true e il pezzo non parsato di w (nel caso in cui x sia un terminale significa che x deve essere la prima lettera di w).
+
+Vogliamo provare a scrivere il parsing per le espressioni più e meno:
+\begin{lstlisting}
+    E -> E + T | E - T | T
+    T -> t
+\end{lstlisting}
+
+Partendo da una grammatica ricorsiva così si può trasformare in una grammatica non ricorsiva:
+\begin{lstlisting}
+
+\end{lstlisting}
+
+Questa grammatica non è prefix free ma noi vogliamo renderla prefix free, in questo caso possiamo mettere un tappo, sostanzialmente vogliamo vedere se dopo Eh mi devo fermare o no, mi fermo se trovo un cancelletto:
+\begin{lstlisting}
+
+\end{lstlisting}
+
+Possiamo ragionare per casi, trattando a parte il caso dei non terminali e poi ogni terminale a parte (una sorta di switch). I non terminali devo considerarli sulla scorta delle sua alternative(quel non terminale può produrre questo o quello), nel caso di T l'unica cosa che posso fare per dirti se funziona è vedere se t funziona (richiamando il parse)
+
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+Bello però noi vogliamo l'albero di parsing, modifichiamo la funzione affinchè ritorni anche i passi left-most con cui x produce il prefisso (lo produce usando regola n):
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+Non è così impensabile partire da una grammatica G e fare un programma che produce la funzione parse, perchè lo abbiamo fatto applicando solamente un pattern, quindi quello che vlgliamo fare è trovare il modo di creare una funzione parse che funziona per una grammatica. Questa cosa si chiama parser generator.
+Quello che facciamo in generale è che ogni volta che un non terminale aveva delle alternative le abbiamo eseguite in cascata invocando una certa funzione che usava quella alternativa, se restitueva true tornavamo altrimenti andavamo nell'else.
+\begin{lstlisting}
+  
+\end{lstlisting}
+Faremo per tutti i non terminali genereremo una serie di or e poi una funzione specifica che fa la concatenazione. L'unica cosa che ci serve è mettere a posto l'indentazione.
+Python ci permette, data una stringa sorgente renderla eseguibile, prende un sorgente di una parse e restituisce una funzione che fa il parsing (reflection di python).
+
+\begin{lstlisting}
+def make_parse_source(G):
+\end{lstlisting}
+
+Notiamo che è una ricorsione con backtracking, non scendo all'infinito ma mi fermo prima in alcuni casi.
+
+La cosa drammatica di questo parser è che se ho due alternative tengo sempre buona la prima, ma se il linguaggio non è context free potrei entrare dentro il prefisso e poi dentro li andrei avanti all'infinito. In questo esempio vediamo che parsando alla fine ottengo true con una lista non vuota, quindi sembrerebbe che non ha parsato:
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+Il problema che non è questa la strada, di fronte ad una disgiunzione $A -> B | C$ non posso prendere per buona solo la produzione B  ed ignorare il fatto che potrebbe produrre anche C (che potrebbe essere meglio), ed è ovviamente un grande limite. Quello che si potrebbe fare è avere un parsing con le continuazioni, sostanzialmetne restituisco nel parse anche una funzione che prova tutte le alternative. Il problema di questa cosa è che si risolve il problema ma non è più lineare, perchè fa tutte le alternative.
+
+In buona sostanza avere un parsing ricorsivo discendente è fighissimo perchè è lineare, semplice da implementare e permette di avere già in mano l'interprete. Ad esempio il parsing ricorsivo discendente è quello di Python.
+Forse se stiamo costruendo il nostro DSL, con delle regole semplici (comandare drone, irrigazione ...), possiamo permetterci di avere un parsing ricorsivo discendente, ma se vogliamo fare un parser generico per un linguaggio generico non possiamo permetterci di avere un parsing ricorsivo discendente.
