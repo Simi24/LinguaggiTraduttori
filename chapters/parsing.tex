@@ -718,7 +718,7 @@ Prendo questa grammatica e sostituisco gli $A_1$ con quelli che abbiamo sistemat
 \subsection{Prefix-Free}
 
 Adesso c'è un ulteriore richiesta che è più sottile, vogliamo parlare dei prefix-free, non è possibile avere un prefisso proprio dentro un linguaggio.
-Possiamo dire che una grammatica è prefix free se e solo se tutti i non terminali della grammatica sono prefix free. Non è detto che una grammatica si possa trasformare in prefix free, quindi noi lavoreremo sull'ipotesi che la grammatica sia prefix free.
+Possiamo dire che una grammatica è prefix free se e solo se tutti i non terminali della grammatica sono prefix free, ossia A non deriva mai sia una parola che un suo prefisso. Non è detto che una grammatica si possa trasformare in prefix free, quindi noi lavoreremo sull'ipotesi che la grammatica sia prefix free.
 
 \subsection{Parsing Ricorsivo Discendente}
 L'idea è che vorremmo scrivere una funzione parse che prende in input un simbolo x e un pezzo di forma sentenziale w e restituisce una coppia booleano $w^{'}$ tale per cui se per come è fatta la grammtica x effettua il parsing di un prefisso di w allora restituisce true e il pezzo non parsato di w (nel caso in cui x sia un terminale significa che x deve essere la prima lettera di w).
@@ -731,45 +731,327 @@ Vogliamo provare a scrivere il parsing per le espressioni più e meno:
 
 Partendo da una grammatica ricorsiva così si può trasformare in una grammatica non ricorsiva:
 \begin{lstlisting}
-
+"""
+E -> Eh Ets | Eh
+Eh -> T
+Ets -> Et Ets | Et
+Et -> + T | - T
+T -> t
+"""
 \end{lstlisting}
 
 Questa grammatica non è prefix free ma noi vogliamo renderla prefix free, in questo caso possiamo mettere un tappo, sostanzialmente vogliamo vedere se dopo Eh mi devo fermare o no, mi fermo se trovo un cancelletto:
 \begin{lstlisting}
-
+G = Grammar.from_string("""
+E -> Eh Ets | Eh #
+Eh -> T
+Ets -> Et Ets | Et #
+Et -> + T | - T
+T -> t
+""")
 \end{lstlisting}
 
 Possiamo ragionare per casi, trattando a parte il caso dei non terminali e poi ogni terminale a parte (una sorta di switch). I non terminali devo considerarli sulla scorta delle sua alternative(quel non terminale può produrre questo o quello), nel caso di T l'unica cosa che posso fare per dirti se funziona è vedere se t funziona (richiamando il parse)
 
 \begin{lstlisting}
+@show_calls(True)
+def parse(X, rest):
+
+  if X in G.T:
+
+    if rest and rest[0] == X: return True, rest[1:]
+
+  elif X == 'T': # T -> t
+
+    return parse('t', rest)
+
+  elif X == 'Eh': # Eh -> T
+
+    return parse('T', rest)
+
+  elif X == 'Et': # Et -> + T | - T
+
+    s, r = parse('+', rest)
+    if s: return parse('T', r)
+    s, r = parse('-', rest)
+    if s: return parse('T', r)
+
+  elif X == 'Ets': # Ets -> Et Ets | Et #
+
+    s0, r0 = parse('Et', rest)
+    if s0:
+      s1, r1 = parse('#', r0)
+      if s1: return True, r1
+      return parse('Ets', r0)
   
+  elif X == 'E': # E -> Eh Ets | Eh #
+
+    s0, r0 = parse('Eh', rest)
+    if s0:
+      s1, r1 = parse('#', r0)
+      if s1: return True, r1
+      return parse('Ets', r0)
+
+  return False, rest
 \end{lstlisting}
 
 Bello però noi vogliamo l'albero di parsing, modifichiamo la funzione affinchè ritorni anche i passi left-most con cui x produce il prefisso (lo produce usando regola n):
 \begin{lstlisting}
-  
+# ora parse restituisce: succ, rest, steps
+
+@show_calls(True)
+def parse(X, rest): 
+
+  if X in G.T:
+
+    if rest and rest[0] == X: return True, rest[1:], None
+
+  elif X == 'T':
+
+    s, r, _ = parse('t', rest)
+    if s: return True, r, [7]
+
+  elif X == 'Eh':
+
+    s, r, p = parse('T', rest)
+    if s: return True, r, [2] + p
+
+  elif X == 'Et':
+
+    s, r, _ = parse('+', rest)
+    if s:
+      s, r, p = parse('T', r)
+      if s: return True, r, [5] + p
+    s, r, _ = parse('-', rest)
+    if s: 
+      s, r, p = parse('T', r)
+      if s: return True, r, [6] + p
+
+  elif X == 'Ets':
+
+    s0, r0, p0 = parse('Et', rest)
+    if s0:
+      s1, r1, _ = parse('#', r0)
+      if s1: return True, r1, [4] + p0
+      s2, r2, p2 = parse('Ets', r0)
+      if s2: return True, r2, [3] + p0 + p2
+
+  elif X == 'E':
+
+    s0, r0, p0 = parse('Eh', rest)
+    if s0:
+      s1, r1, _ = parse('#', r0)
+      if s1: return True, r1, [1] + p0
+      s2, r2, p2 = parse('Ets', r0)
+      if s2: return True, r2, [0] + p0 + p2
+
+  return False, rest, []
 \end{lstlisting}
 
-Non è così impensabile partire da una grammatica G e fare un programma che produce la funzione parse, perchè lo abbiamo fatto applicando solamente un pattern, quindi quello che vlgliamo fare è trovare il modo di creare una funzione parse che funziona per una grammatica. Questa cosa si chiama parser generator.
-Quello che facciamo in generale è che ogni volta che un non terminale aveva delle alternative le abbiamo eseguite in cascata invocando una certa funzione che usava quella alternativa, se restitueva true tornavamo altrimenti andavamo nell'else.
+\subsection{Generazione automatica del parser}
+
+Non è così impensabile partire da una grammatica G e fare un programma che produce la funzione parse, perchè lo abbiamo fatto applicando solamente un pattern (gli if della soluzione sono prodotti, uno per ciascun simbolo, considerando in sequenza le possibili alternative (i lati destri delle produzioni) e restituendo successo al primo tentativo valido), quindi quello che vlgliamo fare è trovare il modo di creare una funzione parse che funziona per una grammatica. Questa cosa si chiama parser generator.
+
+Un esempio e' il simbolo Ets le cui due alternative sono Et Ets e Et \# ... supponiamo di scaricarne la soluzione a due funzioni denominate Ets\_alt0 e Ets\_alt1:
 \begin{lstlisting}
-  
-\end{lstlisting}
-Faremo per tutti i non terminali genereremo una serie di or e poi una funzione specifica che fa la concatenazione. L'unica cosa che ci serve è mettere a posto l'indentazione.
-Python ci permette, data una stringa sorgente renderla eseguibile, prende un sorgente di una parse e restituisce una funzione che fa il parsing (reflection di python).
+def parse(X, rest):
 
+  # ...
+
+  if X == 'Ets':
+    succ_alt, rest_alt = Ets_alt0(rest)
+    if succ_alt: return True, rest_alt
+    succ_alt, rest_alt = Ets_alt1(rest)
+    if succ_alt: return True, rest_alt
+    return False, rest
+
+  # ...
+
+def Ets_alt0(rest):
+  succ, rest = parse('Et', rest)
+  if not succ: return False, rest
+  succ, rest = parse('Ets', rest)
+  if not succ: return False, rest
+  return True, rest
+
+def Ets_alt1(rest):
+    succ, rest = parse('Et', rest)
+    if not succ: return False, rest
+    succ, rest = parse('#', rest)
+    if not succ: return False, rest
+    return True, rest
+\end{lstlisting}
+
+Quello che facciamo in generale è che ogni volta che un non terminale aveva delle alternative le abbiamo eseguite in cascata invocando una certa funzione che usava quella alternativa, se restitueva true tornavamo altrimenti andavamo nell'else.
+Ci servono due funziononi di utilita': la prima per indentare un blocco di testo al livello di indentazione specificato e la seconda per tradurre il codice sorgente di una funzione Python di nome parse in codice eseguibile:
+\begin{lstlisting}
+def indent_at(level, source):
+  return indent(dedent(source), '  ' * level).strip('\n')
+
+def make_parse(source):
+  glb = {'show_calls': show_calls}
+  exec(source, glb)
+  return glb['parse']
+\end{lstlisting}
+Siamo pronti per procedere, useremo le f-stringhe per maggior compattezza:
 \begin{lstlisting}
 def make_parse_source(G):
+
+  # prima le definizioni delle funzioni A_altN
+
+  defs = []
+  for A in G.N:
+    for n, a in enumerate(G.alternatives(A)):
+      # la funzione "{A}_alt{n}"
+      defs.append(f'def {A}_alt{n}(rest):')
+      for X in a: 
+        # una coppia di linee per ogni simbolo
+        defs.append(indent_at(1, f'''
+          succ, rest = parse('{X}', rest)
+          if not succ: return False, rest
+        '''))
+      defs.append(indent_at(1,'return True, rest'))
+
+  # poi gli if, uno per terminale
+
+  ifs = []
+  for A in G.N:
+    # l'if "X == '{A}'"
+    ifs.append(f"if X == '{A}':")
+    for n, _ in enumerate(G.alternatives(A)): 
+      # una coppia di linee, una per alternativa
+      ifs.append(indent_at(1, f'''
+        succ_alt, rest_alt = {A}_alt{n}(rest)
+        if succ_alt: return True, rest_alt
+      '''))
+    ifs.append(indent_at(1,'return False, rest'))
+
+  # in fine i terminali
+
+  ifs.append(indent_at(0, f'''
+    if X in {G.T}:
+      if rest and rest[0] == X: return True, rest[1:]
+      return False, rest
+  '''))
+
+  # e ora mettiamo tutto assieme 
+
+  parse = '\n'.join((
+    indent_at(0, '''
+      @show_calls(True)
+      def parse(X, rest):
+    '''), 
+    indent_at(1, '\n'.join(defs)), 
+    indent_at(1, '\n'.join(ifs))
+  ))
+
+  return parse
+\end{lstlisting}
+
+Faremo per tutti i non terminali genereremo una serie di or e poi una funzione specifica che fa la concatenazione. L'unica cosa che ci serve è mettere a posto l'indentazione.
+Python ci permette, data una stringa sorgente renderla eseguibile, prende un sorgente di una parse e restituisce una funzione che fa il parsing (reflection di python).
+Se generaiamo e stampiamo il sorgente otteniamo questo:
+\begin{lstlisting}
+source = make_parse_source(G) # G e la grammatica prefix-free dell'inizio
+print(source)
+
+@show_calls(True)
+def parse(X, rest):
+  def Ets_alt0(rest):
+    succ, rest = parse('Et', rest)
+    if not succ: return False, rest
+    succ, rest = parse('Ets', rest)
+    if not succ: return False, rest
+    return True, rest
+  def Ets_alt1(rest):
+    succ, rest = parse('Et', rest)
+    if not succ: return False, rest
+    succ, rest = parse('#', rest)
+    if not succ: return False, rest
+    return True, rest
+  def E_alt0(rest):
+    succ, rest = parse('Eh', rest)
+    if not succ: return False, rest
+    succ, rest = parse('Ets', rest)
+    if not succ: return False, rest
+    return True, rest
+  def E_alt1(rest):
+    succ, rest = parse('Eh', rest)
+    if not succ: return False, rest
+    succ, rest = parse('#', rest)
+    if not succ: return False, rest
+    return True, rest
+  def Et_alt0(rest):
+    succ, rest = parse('+', rest)
+    if not succ: return False, rest
+    succ, rest = parse('T', rest)
+    if not succ: return False, rest
+    return True, rest
+  def Et_alt1(rest):
+    succ, rest = parse('-', rest)
+    if not succ: return False, rest
+    succ, rest = parse('T', rest)
+    if not succ: return False, rest
+    return True, rest
+  def Eh_alt0(rest):
+    succ, rest = parse('T', rest)
+    if not succ: return False, rest
+    return True, rest
+  def T_alt0(rest):
+    succ, rest = parse('t', rest)
+    if not succ: return False, rest
+    return True, rest
+  if X == 'Ets':
+    succ_alt, rest_alt = Ets_alt0(rest)
+    if succ_alt: return True, rest_alt
+    succ_alt, rest_alt = Ets_alt1(rest)
+    if succ_alt: return True, rest_alt
+    return False, rest
+  if X == 'E':
+    succ_alt, rest_alt = E_alt0(rest)
+    if succ_alt: return True, rest_alt
+    succ_alt, rest_alt = E_alt1(rest)
+    if succ_alt: return True, rest_alt
+    return False, rest
+  if X == 'Et':
+    succ_alt, rest_alt = Et_alt0(rest)
+    if succ_alt: return True, rest_alt
+    succ_alt, rest_alt = Et_alt1(rest)
+    if succ_alt: return True, rest_alt
+    return False, rest
+  if X == 'Eh':
+    succ_alt, rest_alt = Eh_alt0(rest)
+    if succ_alt: return True, rest_alt
+    return False, rest
+  if X == 'T':
+    succ_alt, rest_alt = T_alt0(rest)
+    if succ_alt: return True, rest_alt
+    return False, rest
+  if X in frozenset({'+', '-', 't', '#'}):
+    if rest and rest[0] == X: return True, rest[1:]
+    return False, rest
 \end{lstlisting}
 
 Notiamo che è una ricorsione con backtracking, non scendo all'infinito ma mi fermo prima in alcuni casi.
 
 La cosa drammatica di questo parser è che se ho due alternative tengo sempre buona la prima, ma se il linguaggio non è context free potrei entrare dentro il prefisso e poi dentro li andrei avanti all'infinito. In questo esempio vediamo che parsando alla fine ottengo true con una lista non vuota, quindi sembrerebbe che non ha parsato:
 \begin{lstlisting}
-  
+# una grammatica non prefix-free (L = {a, ab})
+
+G = Grammar.from_string("""
+S -> a | a b
+""")
+
+# costruiamo il parser e tentiamo il parse
+
+source = make_parse_source(G)
+parse = make_parse(source)
+parse('S', 'ab')
+
+(True, 'b') 
 \end{lstlisting}
 
-Il problema che non è questa la strada, di fronte ad una disgiunzione $A -> B | C$ non posso prendere per buona solo la produzione B  ed ignorare il fatto che potrebbe produrre anche C (che potrebbe essere meglio), ed è ovviamente un grande limite. Quello che si potrebbe fare è avere un parsing con le continuazioni, sostanzialmetne restituisco nel parse anche una funzione che prova tutte le alternative. Il problema di questa cosa è che si risolve il problema ma non è più lineare, perchè fa tutte le alternative.
+Il problema che non è questa la strada, di fronte ad una disgiunzione $A -> B | C$ non posso prendere per buona solo la produzione B ed ignorare il fatto che potrebbe produrre anche C (che potrebbe essere meglio), ed è ovviamente un grande limite. Quello che si potrebbe fare è avere un parsing con le continuazioni, sostanzialmetne restituisco nel parse anche una funzione che prova tutte le alternative. Il problema di questa cosa è che si risolve il problema ma non è più lineare, perchè fa tutte le alternative.
 
 In buona sostanza avere un parsing ricorsivo discendente è fighissimo perchè è lineare, semplice da implementare e permette di avere già in mano l'interprete. Ad esempio il parsing ricorsivo discendente è quello di Python.
 Forse se stiamo costruendo il nostro DSL, con delle regole semplici (comandare drone, irrigazione ...), possiamo permetterci di avere un parsing ricorsivo discendente, ma se vogliamo fare un parser generico per un linguaggio generico non possiamo permetterci di avere un parsing ricorsivo discendente.
