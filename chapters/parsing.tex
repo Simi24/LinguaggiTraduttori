@@ -760,7 +760,6 @@ def parse(X, rest):
   if X in G.T:
 
     if rest and rest[0] == X: return True, rest[1:]
-
   elif X == 'T': # T -> t
 
     return parse('t', rest)
@@ -1055,3 +1054,54 @@ Il problema che non è questa la strada, di fronte ad una disgiunzione $A -> B |
 
 In buona sostanza avere un parsing ricorsivo discendente è fighissimo perchè è lineare, semplice da implementare e permette di avere già in mano l'interprete. Ad esempio il parsing ricorsivo discendente è quello di Python.
 Forse se stiamo costruendo il nostro DSL, con delle regole semplici (comandare drone, irrigazione ...), possiamo permetterci di avere un parsing ricorsivo discendente, ma se vogliamo fare un parser generico per un linguaggio generico non possiamo permetterci di avere un parsing ricorsivo discendente.
+
+\section{Parsing Bottom-Up}
+La realizzazione di parsing bottom up veniva più facile negli anni 70, ragionare su parsing concreti per le grammatiche context-free deterministiche era più facile. Aggiustare una grammatica per farlo funzionare in questo contesto è più difficile questo perchè funziona al contrario rispetto agli altri parser.
+Interessante perchè è a livello storico è il primo parsing che si occupa di un grosso numero di grammatiche in tempo lineare ma è doloroso perchè richiede uno sforzo al progettista di grammatiche.
+
+Abbiamo sempre in mente la pila (che contiene i simbli), il nastro e il controllo. A partire dal nastro è cercare di mettere sopra il nastro degli alberi, costruire degli alberi che rappresentano delle porzioni del nastro e li uniscono verso l'alto per avere l'albero costruito dal fondo all'alto. Quindi il punto cruciale di questo algoritmo è cominciare a guardare la base e poi la foresta che mi sono costruito sul nastro, quindi sulla pila devo tenere oltre ai tereminali e non terminali devo tenere anche questi alberi.
+Allora la cosa più comoda da considerare è che di fatto nella pila voglio tenere le cime degli alberi della foresta, ma correlata a questa informazione i passi che ho fatto.
+Quando vedo un carattere sul nastro posso:
+\begin{itemize}
+  \item Metterlo sulla cima della pila, facendo uno shift
+  \item Riconoscere che sulla pila c'è il contenuto di una regola produttiva, nella grammatica c'era da qualche parte $A \rightarrow CD$ allora potrei togliere dalla pila C e D e mettere A, quindi ho fatto una riduzione (reduce). Da notare che in questo esempio eravamo in una situazione in cui sulla pila c'erano D e C che a loro volta rappresentavano un albero di derivazione.
+\end{itemize}
+
+Quindi il controllo cerca regole della grammatica il cui lato destro è l'unione di elementi sulla pila. Questa configurazone non è proprio un'automa a pila, perchè non guardo solo la cima della pila, ma spio tutta la pila. Il che sembrerebbe suggerire che questa è una macchina ti Touring, ma scopriremo che non è così. Quello che va colto è che è un approccio inerentemente più complesso perchè l'indecisione è più grande, perchè non solo devo decidere in caso di regole multiple cosa fare ma devo anche decidere se fare uno shift o una riduzione e anche nel caso della riduzione devo decidere quale regola applicare.
+
+Adesso come sempre se abbiamo in testa una cosa che non è deterministica non riusiamo nella pratica a trovare la soluzione, mi immagino di avere una forma descrittiva dello stato della computazione (una descrizione che racconta i passi della computazione), produrre una funzione next che dirà data una delle circostante cosa fare (uno shift e quale reduce fare) che mi dirà quali sono le successive istantanee oppure che nessun lato destro della grammatica fa parte della pila (siamo rovinati) o che abbiamo finito il nastro (abbiamo finito di parsare).
+A questo punto simulo, parto da uno stadio iniziale e poi con una modalità breadth-first (allargo la vista) o con modalità depth-first (più pericolosa perchè potrei andare giù all'infinito).
+
+Vediamo una grammatica e facciamo un atto di fede in cui la pila è undbound (perchè ci teniamo dentro anche i passi di derivazione):
+\begin{lstlisting}
+  
+\end{lstlisting}
+Vediamo che la descrizione istantanea è come l'altra, ho i passi di derivazione, la pila vuota, la testina e il nastro.
+A botte di shift e reduce portiamo un po' di simboli sulla pila e quando vedo che sulla pila ci sono delle regole destre della grammatica tolgo quelle teste e ci metto l'albero di derivazione.
+
+Adesso ragioniamo su come fare la funzione next, l'aspetto cruciale è che abbiamo un automa che ha delle primitive che si riflettono sulla sua natura di automa a pila, dopo di che siccome per ogni condizione in cui si trova ho un certo insieme finito di possibilità (non ristretto ad 1) posso fare una simulazione che devo fare con la funzione next.
+Il passo di riduzione è più difficile da implementare perchè devo prendere tutto lo stack, corrisponde ad una lettura completa della pila (dal punto di vista di programmazione ad oggetti svelo tutto lo stato dell'oggetto). All'occhio che qui non ci sono le epsilon regole.
+
+\begin{lstlisting}
+\end{lstlisting}
+
+Possiamo usare lo stesso codice dell'altra volta per fare la visita in ampiezza, abbiamo visto un esempio data una grammatica con ricorsione a sinistra che produce due derivazioni right-most diverse. Vediamo che come l'altra volta abbiamo il parametro first\_only che ci permette di fermarci alla prima derivazione verde.
+
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+Anche l'approccio con visita in profondità è lo stesso dell'altra volta:
+\begin{lstlisting}
+\end{lstlisting}
+
+Vediamo un esempio che anche con una grammatica apparentemente elementare ed una stringa corta ha dei problemi non visibili ad occhio nudo, se la proviamo con la visita in profondità è vero che arriva alla soluzione ma sbaglia un sacco di strade.
+Questo algoritmo come abbiamo visto è più difficile da ragionarsi sopra in particolare perchè restano due brutte cose da sistemare:
+\begin{itemize}
+  \item Devo leggere tutta la pila
+  \item Devo tenere tutti gli alberi
+\end{itemize}
+
+Ma anche supponendo che questi problemi teorici vengano risolti resta il fatto che purtroppo in questo caso le grammatiche che producono il disastro sono molto più difficili da vedere rispetto alle grammatiche che producono il disastro per i parser top down. Esistono strumenti automatici che ci dicono se la grammatica è ambigua o meno per i parser bottom up (LR(0)) ma è comunque doloroso modificare quelle grammatiche malate. Notiamo che TopDown e BottoUp si usano per grammatiche deterministiche e che senza ambiguità hanno costo computazionale $O(n)$, quindi non è un problema di efficienza ma di correttezza. 
+
+Dal lato dei parser Bottom Up ci sarebbe l'algoritmo CYK (che usiamo per le grammatiche generali ed ha costo computazionale $n^3$) bello, che è l'algoritmo di Early che funziona per le grammatiche generali che in caso di non ambiguità per le grammatiche determinstiche (quelle che usiamo TopDown e BottoUP) diventa $O(n)$.

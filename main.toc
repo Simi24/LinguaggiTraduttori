@@ -34,3 +34,4 @@
 \contentsline {subsection}{\numberline {3.4.2}Prefix-Free}{39}{subsection.3.4.2}%
 \contentsline {subsection}{\numberline {3.4.3}Parsing Ricorsivo Discendente}{39}{subsection.3.4.3}%
 \contentsline {subsection}{\numberline {3.4.4}Generazione automatica del parser}{41}{subsection.3.4.4}%
+\contentsline {section}{\numberline {3.5}Parsing Bottom-Up}{45}{section.3.5}%
