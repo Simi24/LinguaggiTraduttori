@@ -1,37 +1,38 @@
-\contentsline {chapter}{\numberline {1}Introduzione}{2}{chapter.1}%
-\contentsline {section}{\numberline {1.1}Python}{3}{section.1.1}%
-\contentsline {subsection}{\numberline {1.1.1}Dispatch table}{4}{subsection.1.1.1}%
-\contentsline {subsection}{\numberline {1.1.2}Memorizzazione}{4}{subsection.1.1.2}%
-\contentsline {section}{\numberline {1.2}Strutture dati}{5}{section.1.2}%
-\contentsline {subsection}{\numberline {1.2.1}Alberi}{6}{subsection.1.2.1}%
-\contentsline {subsubsection}{Visite}{6}{section*.2}%
-\contentsline {subsubsection}{Alberi con attributi}{7}{section*.3}%
-\contentsline {subsection}{\numberline {1.2.2}Grafi}{8}{subsection.1.2.2}%
-\contentsline {subsubsection}{Algoritmi}{9}{section*.4}%
-\contentsline {subsection}{\numberline {1.2.3}backtracking}{10}{subsection.1.2.3}%
-\contentsline {chapter}{\numberline {2}Linguaggi}{12}{chapter.2}%
-\contentsline {section}{\numberline {2.1}Closed form}{13}{section.2.1}%
-\contentsline {subsection}{\numberline {2.1.1}Self embedding}{13}{subsection.2.1.1}%
-\contentsline {section}{\numberline {2.2}Alberi di parsing}{13}{section.2.2}%
-\contentsline {subsection}{\numberline {2.2.1}Pulizia di una grammatica}{13}{subsection.2.2.1}%
-\contentsline {subsection}{\numberline {2.2.2}Dimensione degli alberi di parsing}{15}{subsection.2.2.2}%
-\contentsline {subsection}{\numberline {2.2.3}Derivazioni}{15}{subsection.2.2.3}%
-\contentsline {subsection}{\numberline {2.2.4}Dalla derivazione all'albero di parsing}{16}{subsection.2.2.4}%
-\contentsline {subsection}{\numberline {2.2.5}Possibili soluzioni}{17}{subsection.2.2.5}%
-\contentsline {chapter}{\numberline {3}Parsing}{20}{chapter.3}%
-\contentsline {section}{\numberline {3.1}NPDA}{21}{section.3.1}%
-\contentsline {section}{\numberline {3.2}CYK parser}{23}{section.3.2}%
-\contentsline {subsection}{\numberline {3.2.1}Albero di parsing}{26}{subsection.3.2.1}%
-\contentsline {subsection}{\numberline {3.2.2}Riduzione in forma normale di Chomsky}{27}{subsection.3.2.2}%
-\contentsline {subsection}{\numberline {3.2.3}Elminazione epsilon-regole}{28}{subsection.3.2.3}%
-\contentsline {subsection}{\numberline {3.2.4}Eliminazione delle unit rules}{30}{subsection.3.2.4}%
-\contentsline {subsection}{\numberline {3.2.5}Eliminazione i non solitari}{31}{subsection.3.2.5}%
-\contentsline {subsection}{\numberline {3.2.6}Costruzione albero parsing left-most}{32}{subsection.3.2.6}%
-\contentsline {section}{\numberline {3.3}Parsing Top-down, caso generale}{33}{section.3.3}%
-\contentsline {subsection}{\numberline {3.3.1}Funzione stato prossimo}{35}{subsection.3.3.1}%
-\contentsline {section}{\numberline {3.4}Parsing Ricorsivo Discendente}{38}{section.3.4}%
-\contentsline {subsection}{\numberline {3.4.1}Eliminare Ricorsione a Sinistra}{38}{subsection.3.4.1}%
-\contentsline {subsection}{\numberline {3.4.2}Prefix-Free}{39}{subsection.3.4.2}%
-\contentsline {subsection}{\numberline {3.4.3}Parsing Ricorsivo Discendente}{39}{subsection.3.4.3}%
-\contentsline {subsection}{\numberline {3.4.4}Generazione automatica del parser}{41}{subsection.3.4.4}%
-\contentsline {section}{\numberline {3.5}Parsing Bottom-Up}{45}{section.3.5}%
+\contentsline {chapter}{\numberline {1}Introduzione}{3}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Python}{4}{section.1.1}%
+\contentsline {subsection}{\numberline {1.1.1}Dispatch table}{5}{subsection.1.1.1}%
+\contentsline {subsection}{\numberline {1.1.2}Memorizzazione}{5}{subsection.1.1.2}%
+\contentsline {section}{\numberline {1.2}Strutture dati}{6}{section.1.2}%
+\contentsline {subsection}{\numberline {1.2.1}Alberi}{7}{subsection.1.2.1}%
+\contentsline {subsubsection}{Visite}{7}{section*.2}%
+\contentsline {subsubsection}{Alberi con attributi}{8}{section*.3}%
+\contentsline {subsection}{\numberline {1.2.2}Grafi}{9}{subsection.1.2.2}%
+\contentsline {subsubsection}{Algoritmi}{10}{section*.4}%
+\contentsline {subsection}{\numberline {1.2.3}backtracking}{11}{subsection.1.2.3}%
+\contentsline {chapter}{\numberline {2}Linguaggi}{13}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Closed form}{14}{section.2.1}%
+\contentsline {subsection}{\numberline {2.1.1}Self embedding}{14}{subsection.2.1.1}%
+\contentsline {section}{\numberline {2.2}Alberi di parsing}{14}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Pulizia di una grammatica}{14}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Dimensione degli alberi di parsing}{16}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.3}Derivazioni}{16}{subsection.2.2.3}%
+\contentsline {subsection}{\numberline {2.2.4}Dalla derivazione all'albero di parsing}{17}{subsection.2.2.4}%
+\contentsline {subsection}{\numberline {2.2.5}Possibili soluzioni}{18}{subsection.2.2.5}%
+\contentsline {chapter}{\numberline {3}Parsing}{21}{chapter.3}%
+\contentsline {section}{\numberline {3.1}NPDA}{22}{section.3.1}%
+\contentsline {section}{\numberline {3.2}CYK parser}{24}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Albero di parsing}{27}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}Riduzione in forma normale di Chomsky}{28}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.3}Elminazione epsilon-regole}{29}{subsection.3.2.3}%
+\contentsline {subsection}{\numberline {3.2.4}Eliminazione delle unit rules}{31}{subsection.3.2.4}%
+\contentsline {subsection}{\numberline {3.2.5}Eliminazione i non solitari}{32}{subsection.3.2.5}%
+\contentsline {subsection}{\numberline {3.2.6}Costruzione albero parsing left-most}{33}{subsection.3.2.6}%
+\contentsline {section}{\numberline {3.3}Parsing Top-down, caso generale}{34}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Funzione stato prossimo}{36}{subsection.3.3.1}%
+\contentsline {section}{\numberline {3.4}Parsing Ricorsivo Discendente}{39}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Eliminare Ricorsione a Sinistra}{39}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}Prefix-Free}{40}{subsection.3.4.2}%
+\contentsline {subsection}{\numberline {3.4.3}Parsing Ricorsivo Discendente}{40}{subsection.3.4.3}%
+\contentsline {subsection}{\numberline {3.4.4}Generazione automatica del parser}{42}{subsection.3.4.4}%
+\contentsline {section}{\numberline {3.5}Parsing Bottom-Up}{46}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}Shift e Reduce}{47}{subsection.3.5.1}%

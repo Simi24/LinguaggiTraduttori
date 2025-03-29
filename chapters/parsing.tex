@@ -1056,11 +1056,13 @@ In buona sostanza avere un parsing ricorsivo discendente è fighissimo perchè �
 Forse se stiamo costruendo il nostro DSL, con delle regole semplici (comandare drone, irrigazione ...), possiamo permetterci di avere un parsing ricorsivo discendente, ma se vogliamo fare un parser generico per un linguaggio generico non possiamo permetterci di avere un parsing ricorsivo discendente.
 
 \section{Parsing Bottom-Up}
-La realizzazione di parsing bottom up veniva più facile negli anni 70, ragionare su parsing concreti per le grammatiche context-free deterministiche era più facile. Aggiustare una grammatica per farlo funzionare in questo contesto è più difficile questo perchè funziona al contrario rispetto agli altri parser.
+La realizzazione di parsing bottom up veniva più facile negli anni 70 infatti si e' partiti da questo tipo di parser, ragionare su parsing concreti per le grammatiche context-free deterministiche era più facile. Aggiustare una grammatica per farlo funzionare in questo contesto è più difficile questo perchè funziona al contrario rispetto agli altri parser.
 Interessante perchè è a livello storico è il primo parsing che si occupa di un grosso numero di grammatiche in tempo lineare ma è doloroso perchè richiede uno sforzo al progettista di grammatiche.
 
-Abbiamo sempre in mente la pila (che contiene i simbli), il nastro e il controllo. A partire dal nastro è cercare di mettere sopra il nastro degli alberi, costruire degli alberi che rappresentano delle porzioni del nastro e li uniscono verso l'alto per avere l'albero costruito dal fondo all'alto. Quindi il punto cruciale di questo algoritmo è cominciare a guardare la base e poi la foresta che mi sono costruito sul nastro, quindi sulla pila devo tenere oltre ai tereminali e non terminali devo tenere anche questi alberi.
+Abbiamo sempre in mente la pila (che contiene i simbli), il nastro e il controllo. L'idea e' mettere sopra il nastro degli alberi, costruire degli alberi che rappresentano delle porzioni della parola (le derivazioni) e li uniscono verso l'alto per avere l'albero di derivazione costruito dal fondo all'alto. Quindi il punto cruciale di questo algoritmo è cominciare a guardare la base e poi la foresta che mi sono costruito sul nastro, quindi sulla pila devo tenere oltre ai tereminali e non terminali devo tenere anche questi alberi.
 Allora la cosa più comoda da considerare è che di fatto nella pila voglio tenere le cime degli alberi della foresta, ma correlata a questa informazione i passi che ho fatto.
+
+\subsection{Shift e Reduce}
 Quando vedo un carattere sul nastro posso:
 \begin{itemize}
   \item Metterlo sulla cima della pila, facendo uno shift
@@ -1070,12 +1072,40 @@ Quando vedo un carattere sul nastro posso:
 Quindi il controllo cerca regole della grammatica il cui lato destro è l'unione di elementi sulla pila. Questa configurazone non è proprio un'automa a pila, perchè non guardo solo la cima della pila, ma spio tutta la pila. Il che sembrerebbe suggerire che questa è una macchina ti Touring, ma scopriremo che non è così. Quello che va colto è che è un approccio inerentemente più complesso perchè l'indecisione è più grande, perchè non solo devo decidere in caso di regole multiple cosa fare ma devo anche decidere se fare uno shift o una riduzione e anche nel caso della riduzione devo decidere quale regola applicare.
 
 Adesso come sempre se abbiamo in testa una cosa che non è deterministica non riusiamo nella pratica a trovare la soluzione, mi immagino di avere una forma descrittiva dello stato della computazione (una descrizione che racconta i passi della computazione), produrre una funzione next che dirà data una delle circostante cosa fare (uno shift e quale reduce fare) che mi dirà quali sono le successive istantanee oppure che nessun lato destro della grammatica fa parte della pila (siamo rovinati) o che abbiamo finito il nastro (abbiamo finito di parsare).
+
 A questo punto simulo, parto da uno stadio iniziale e poi con una modalità breadth-first (allargo la vista) o con modalità depth-first (più pericolosa perchè potrei andare giù all'infinito).
 
 Vediamo una grammatica e facciamo un atto di fede in cui la pila è undbound (perchè ci teniamo dentro anche i passi di derivazione):
+
 \begin{lstlisting}
-  
+G = Grammar.from_string("""
+S -> A C
+A -> a b
+C -> c
+""")
+
+i = BottomUpInstantaneousDescription(G, 'abc')
+# (), , |abc
+
+i = i.shift()
+display(i, side_by_side(i.stack))
+# (), (a), a|bc
+
+i = i.shift()
+display(i, side_by_side(i.stack))
+# (), (a)(b), ab|c
+
+i = i.reduce(G.P[1])
+display(i, side_by_side(i.stack))
+# (A -> a b,), (A: (a), (b)), ab|c
+
+. . .
+
+i = i.reduce(G.P[0])
+display(i, side_by_side(i.stack))
+# (S -> A C, C -> c, A -> a b), (S: (A: (a), (b)), (C: (c))), abc|
 \end{lstlisting}
+
 Vediamo che la descrizione istantanea è come l'altra, ho i passi di derivazione, la pila vuota, la testina e il nastro.
 A botte di shift e reduce portiamo un po' di simboli sulla pila e quando vedo che sulla pila ci sono delle regole destre della grammatica tolgo quelle teste e ci metto l'albero di derivazione.
 
@@ -1083,19 +1113,116 @@ Adesso ragioniamo su come fare la funzione next, l'aspetto cruciale è che abbia
 Il passo di riduzione è più difficile da implementare perchè devo prendere tutto lo stack, corrisponde ad una lettura completa della pila (dal punto di vista di programmazione ad oggetti svelo tutto lo stato dell'oggetto). All'occhio che qui non ci sono le epsilon regole.
 
 \begin{lstlisting}
+G = Grammar.from_string('S -> a S b | S a b | a a a')
+derivations, graph = breadth_first(G, list('aaaab'), True, False) # raccolgo tutte le derivazioni
+\end{lstlisting}
+
+\begin{lstlisting}
+# restituisce un elenco di coppie (s, bid) 
+# dove s e' 'shift', o la str(P) dove P e' una produzione di G e bid e' una BottomUpInstantaneousDescription
+# ottenuta applicando lo shift o la riduzione usando P a curr
+
+def next_instdescrs(curr):
+
+  if curr.is_done(): return []
+
+  instdescrs = []
+
+  # shift
+  if curr.head_pos < len(curr.tape): instdescrs.append(('shift', curr.shift()))
+  if curr.G.has_epsilon_productions(): instdescrs.append(('e-shift', curr.shift(False)))
+ 
+  # reduce
+  tops = tuple(t.root for t in curr.stack)
+  for P in filter(Production.such_that(rhs_is_suffix_of = tops), curr.G.P):
+    instdescrs.append((str(P), curr.reduce(P)))
+
+  return instdescrs
+
+
+# una funzione che associa ad ogni descrizione un colore 
+# a seconda che sia accettante (verde), o non abbia stati prossimi (rosso)
+def node2color(tid):
+  return {'color': 'green' if tid.is_done() else 'black' if next_instdescrs(tid) else 'red'}
 \end{lstlisting}
 
 Possiamo usare lo stesso codice dell'altra volta per fare la visita in ampiezza, abbiamo visto un esempio data una grammatica con ricorsione a sinistra che produce due derivazioni right-most diverse. Vediamo che come l'altra volta abbiamo il parametro first\_only che ci permette di fermarci alla prima derivazione verde.
 
 \begin{lstlisting}
-  
+def breadth_first(G, word, verbose = False, first_only = True):
+  graph = ComputationGraph(node2color)
+  q = Queue()
+  q.enqueue(BottomUpInstantaneousDescription(G, word))
+  derivations = []
+  while q:
+    if first_only and derivations: break
+    if verbose:
+      for i in q: print(i)
+      print('-' * 60)
+    curr = q.dequeue()
+    for what, nxt in next_instdescrs(curr):
+      if nxt.is_done(): derivations.append(nxt.steps)
+      if not graph.seen(nxt): 
+        q.enqueue(nxt)
+      graph.step(curr, nxt, what)
+  return derivations, graph
 \end{lstlisting}
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/Parsing/bottom_up_breadth.png}
+\end{figure}
+
+\newpage
 
 Anche l'approccio con visita in profondità è lo stesso dell'altra volta:
 \begin{lstlisting}
+def depth_first(G, word, verbose = False, max_steps = -1, use_seen = True):
+  graph = ComputationGraph(node2color)
+  s = Stack()
+  s.push(BottomUpInstantaneousDescription(G, word))
+  derivations = []
+  steps = 0
+  while s:
+    if steps > max_steps > -1: break
+    steps += 1
+    if verbose:
+      for i in s: print(i)
+      print('-' * 60)
+    curr = s.pop()
+    for what, nxt in next_instdescrs(curr):
+      if nxt.is_done(): derivations.append(nxt.steps)
+      if not (use_seen and graph.seen(nxt)): 
+        s.push(nxt)  
+      graph.step(curr, nxt, what)
+  return derivations, graph
 \end{lstlisting}
 
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/Parsing/bottom_up_depth.png}
+\end{figure}
+
+
+
 Vediamo un esempio che anche con una grammatica apparentemente elementare ed una stringa corta ha dei problemi non visibili ad occhio nudo, se la proviamo con la visita in profondità è vero che arriva alla soluzione ma sbaglia un sacco di strade.
+
+\begin{lstlisting}
+# fig. 7.8, pag. 204
+
+G = Grammar.from_string("""
+S -> E
+E -> E Q F | F
+F -> a
+Q -> + | -
+""")
+\end{lstlisting}
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/Parsing/bottom_up_realistico.png}
+\end{figure}
+
 Questo algoritmo come abbiamo visto è più difficile da ragionarsi sopra in particolare perchè restano due brutte cose da sistemare:
 \begin{itemize}
   \item Devo leggere tutta la pila
