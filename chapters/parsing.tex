@@ -1236,7 +1236,8 @@ Dal lato dei parser Bottom Up ci sarebbe l'algoritmo CYK (che usiamo per le gram
 \section{Parsing top-down direzionale deterministico}
 
 Vogliamo metterci nella condizione per cui la cosa che adoperiamo che ha la testina la pila e la parola ad un certo punto vede la cima della pila e la prossima letterla della parola (sotto la testina) il controllo può fare la predizione.
-In buona sostanza vogiamo una tabella, che dipende dalla grammatica, che mi dice la corripondenza tra simboli terminali e non terminali mi da la produzione, tale per cui implementare il controllo dell'automa è una banalità, tale per cui se la cima è un terminale ti dico se c'è un match o no, se la cima è un non terminale ti dico se posso fare una predizione o meno. La magia grande è la tabella che deve funzionare, non deve contenere nessuna produzione se sono in un posto in cui non dovrei essere.
+La necessità di seguire tutti i possibili cammini nel grafo che simula la computazione del NPDA deriva dal fatto che per un certo simbolo A in cima alla pila e il primo terminale b sotto la testina, ci sono più produzioni da considerare.
+In buona sostanza vogiamo una tabella, che dipende dalla grammatica, che mi dice la corripondenza tra simboli terminali e non terminali e grazie a questa corrispondenza riesco a derivare subito la produzione. Grazie a questa tabella implementare il controllo dell'automa è una banalità, se la cima è un terminale ti dico se c'è un match o no, se la cima è un non terminale ti dico se posso fare una predizione o meno. La magia grande è la tabella che deve funzionare, non deve contenere nessuna produzione se sono in un posto in cui non dovrei essere.
 
 Adesso il punto è come produciamo questa tabella, in realtà la abbiamo già vista, perchè ad un certo punto abbiamo giocato con una grammatica che era così:
 \begin{lstlisting}
@@ -1257,16 +1258,26 @@ Funziona bene perchè il primo carattere di ogni produzione è diverso, se sono 
 
 Queste grammatiche si chiamano SSL(1), dove 1 sta per il numero di simboli che guardiamo dopo la testina.
 
-Per costruire la tabella prendo le produzioni della grammatica, le smonto come lato sinistro e letterina e suffisso e la produco così (se c'è un tentativo di riassegnamento mi avvisa che non è una grammatica che posso trattare):
+Per costruire la tabella prendo le produzioni della grammatica, le smonto come lato sinistro e letterina e suffisso e la produco così (se c'è un tentativo di riassegnamento mi avvisa che non è una grammatica che posso trattare), per ogni produzione $A \rightarrow b\delta$ basta considerare il primo simbolo che è terminale e distingue le varie alternative:
 \begin{lstlisting}
-  
+  def compute_simple_table(G):
+
+  TABLE = Table(2, no_reassign = True) # no_reassign sara chiarito in seguito
+
+  for P in G.P:
+    A, (b, +d) = P
+    TABLE[A, b] = P
+
+  return TABLE
 \end{lstlisting}
 
 Ma se la grammatica non è semplice? nella costruzione della tabella mi avverte che c'è un conflitto (cerca di mettere due entry per la stessa coppia).
 
 Questo modo di costruire i parser è facile ma utile, ad esempio è la notazione prefissa (notazione polacca) che è una notazione che non ha bisogno di parentesi, perchè il parser è in grado di capire la precedenza degli operatori. Ad esempio:
 \begin{lstlisting}
-
+G = Grammar.from_string("""
+E -> + E E | - E E | * E E | / E E | t
+""")
 \end{lstlisting}
 
 Questo modo di scrivere le espressioni è molto comodo perchè è immediato parsare le associazioni e le precedenze, ad esempio:
@@ -1277,7 +1288,7 @@ Questo modo di scrivere le espressioni è molto comodo perchè è immediato pars
 \]
 
 Questa costrizione è molto stringente, non avere due simboli uguali in due produzionzioni diverse è una cosa che non è sempre possibile, ad esempio vorrebber dire non poter avere if e if else.
-Allora una cosa su cui possiamo ragionare è questo, supponiamo di sapere per ogni forma sentenziale qual'è la prima lettere che compare nella derivazione. Mi interessa conoscere data una forma sentenziale i prefissi, di tutte le parole che questa forma sentenziale può produrre quali sono i primi caratteri di queste derivazioni.
+Allora una cosa su cui possiamo ragionare è questa, supponiamo di sapere per ogni forma sentenziale qual'è la prima lettera che compare nella derivazione. Mi interessa conoscere data una forma sentenziale i prefissi, di tutte le parole che questa forma sentenziale può produrre quali sono i primi caratteri di queste derivazioni.
 Se avessi questa roba qui potrei costruire la tabella in un'altra ottica, metto in tebella le produzioni basandomi sui first, ad esempio se voglio collocare A -> w e so che first(w) = a, b, f allora la tabella sarebbe così:
 \begin{table}[ht!]
   \centering
@@ -1293,29 +1304,62 @@ Se avessi questa roba qui potrei costruire la tabella in un'altra ottica, metto 
 
 Il first di una forma sentenziale nella forma in cui nessuna delle parti può scomparire (in quanto non ci sono epsilon regole) è il primo simbolo che compare nella derivazione. Nel riempire la tabella posso fare una fattorizzazione, prendo la A e la spacco e poi prendo tutte le lettere che vengono prodotte da B e riempio la tabella:
 \begin{lstlisting}
-  
+  def compute_table(G):
+
+  TABLE = Table(2, no_reassign = True)
+
+  FIRST = compute_first(G)
+
+  for P in G.P:
+    A, (B, *d) = P
+    for a in FIRST[B]:
+      TABLE[A, a] = P
+
+  return TABLE
 \end{lstlisting}
 
 Con questa cosa del first riesco a vedere i conflitti un po' in avanti, un conflitto lo ho quando due produzioni hanno lo stesso first.
 
-Si suggerirebbe un approccio ricorsivo, questo per guardare i first, ricordando che questo è perchè non abbiamo i first.
+Si suggerirebbe un approccio ricorsivo, questo per guardare i first, ricordando che questo è perchè non abbiamo le epsilon regole. Il calcolo di $FIRST(\beta)$ dove si ponda $\beta = C\delta$, può essere semplificato osservando che $FIRST(C\delta) = FIRST(C)$.
 
 \begin{lstlisting}
-  def compute_first(G):
-    def recursive_first(X):
+def compute_first(G):
+
+  def recursive_first(B): # B e G.T | G.N
+    return union_of(
+      recursive_first(C)
+      for C, *d in G.alternatives(B) if B != C # occhio alla ricorsione a sinistra!
+    ) if B in G.N else {B}
+  
+  FIRST = Table(1)
+  for X in G.N | G.T: FIRST[X] = recursive_first(X)
+      
+  return FIRST
 \end{lstlisting}
 
 Vediamo un esempio con una garmmatica di un ipotetico sistema esperto nel quale prima si indica un fatto, una sequenza di fatti è una sessione e poi si termina con una domanda:
 \begin{lstlisting}
-  
+# fig. 8.7, pag. 240
+
+G = Grammar.from_string("""
+Session -> Fact Session | Question | ( Session ) Session
+Fact -> ! STRING
+Question -> ? STRING
+""")
 \end{lstlisting}
 
-Ricorsivamente possiao costruire i first, l'idea è che posso usare una regola che ha sessione a sinistra solo se sul nastro vedo uno di questi:
-\begin{table}
-  
+Ricorsivamente possiamo costruire i first, l'idea è che posso usare una regola che ha sessione a sinistra solo se sul nastro vedo uno di questi ?, (), !.
+E a questo punto posso costruire la tabella di derivazione, in questo caso non ci sono conflitti e quindi posso costruire la tabella:
+\begin{table}[ht!]
+ \centering
+  \begin{tabular}{|c|c|}
+    \hline
+    \textbf{Question} & ? \\ \hline
+    \textbf{Fact} & ! \\ \hline
+    \textbf{Session} & (, !, ? \\ \hline
+    \end{tabular} 
 \end{table}
 
-E a questo punto posso costruire la tabella di derivazione, in questo caso non ci sono conflitti e quindi posso costruire la tabella:
 
 L'uso della tabella first mi consente di sapere, non tanto sulla scorta della prima letterina dei lati destri, ma sulla scorta dei first della grammatica (le letterine), se questa tabella non ha conflitti sono a posto, posso chiamare questa roba LL(1) e posso chiamare il parser che funziona:
 \begin{enumerate}
@@ -1326,11 +1370,23 @@ L'uso della tabella first mi consente di sapere, non tanto sulla scorta della pr
 
 Abbiamo trovato un parser deterministico lineare, lineare perchè legge ogni lettera una volta sola.
 
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/Parsing/tabella_parsing_bottomup.png}
+\end{figure}
+
 \subsection{Cosa accade con le epsilon regole}
 La presenza delle epsilon regole serve a tradurre meglio l'idea semantica che ho in testa, una sessione di colloquio con il mio sistema esperto è una sequenza di fatti, potenzialmente vuota, seguita da una domanda. Per fare questa roba ho bisogno di fare sparire i fatti, quindi ho bisogno di epsilon regole.
 
 \begin{lstlisting}
-  
+# fig. 8.9, pag. 242
+
+G = Grammar.from_string("""
+Session -> Facts Question | ( Session ) Session
+Facts -> Fact Facts | e
+Fact -> ! STRING
+Question -> ? STRING
+""") 
 \end{lstlisting}
 
 Cominciamo col ragionare per gradi, come facciamo la tabella dei first con le epsilon regole? Quello che potrei fare è fare in modo che table sbirci non solo il primo simbolo ma un po' più in giù nella pila, in realtà vedremo che non è necessario, si potrà pre-computare una tabella.
@@ -1342,7 +1398,44 @@ Occuparsi di first in presenza di epsilon regole non è così devastante. Qui no
 \end{itemize}
 
 Faccio una chiusura, first la computo per tutte le forme sentenziali, quindi una entry della tabella è una tupla:
-Riempio mettendo first smontando la forma sentenziale tranne la nullabilità il prefisso e se c'è la nullabilità il suffisso:
+Riempio mettendo first smontando la forma sentenziale tranne la nullabilità il prefisso e se c'è la nullabilità il suffisso. Consideriamo anche la stringa vuota e il simbolo di fine nastro(per praticità, considereremo anche il caso di suffissi di lunghezza nulla, a cui corrisponderà $\epsilon$). Ad ogni passo la chiusura, per ciascun suffisso $\omega = C\delta$, aggiungerà allàinsieme First($\omega$) i terminali in:
+\begin{itemize}
+  \item First($C$) se $\epsilon \not\in First(C)$
+  \item First($C$) - $\epsilon$ e First($\delta$) se $\epsilon \in First(C)$
+\end{itemize}
+Per concludere, la seguente implementazione popola FIRST con $FIRST(\omega)$ per tutti i suffissi dei lati destri delle produzioni di G anche qualora siano presneti epsilon regole:
 \begin{lstlisting}
-  
+ def compute_efirst(G):
+
+  FIRST = Table(1, element = set) # questo significa che gli elementi dell tabella sono insiemi
+
+  # i casi base
+  for t in G.T | {e, HASH}: FIRST[(t, )] = {t} # attenzione, gli indici sono forme sentenziali, ossia tuple!
+
+  # il caso di forma sentenziale di lunghezza nulla
+  FIRST[tuple()] = {e}
+
+  @closure
+  def update_with_suffixes(FIRST):
+    for A, a in G.P:
+      FIRST[(A, )] |= FIRST[a]
+      for o in suffixes(a):
+        C, *d = o
+        FIRST[o] |= FIRST[(C, )] - {e}
+        if e in FIRST[(C, )]: FIRST[o] |= FIRST[d]
+    return FIRST
+
+  return update_with_suffixes(FIRST) 
 \end{lstlisting}
+
+Chiamando questa funzione sulla nostra grammatica otteniamo:
+\begin{table}
+  \centering
+  \begin{tabular}{c|c}
+    \textbf{Session} & \{ $($, !, ? \} \\
+    \textbf{Fact} & \{ ! \} \\
+    \textbf{Question} & \{ ? \} \\
+    \textbf{Facts} & \{ !, e \} \\
+    
+  \end{tabular}
+\end{table}

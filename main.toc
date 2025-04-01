@@ -37,4 +37,4 @@
 \contentsline {section}{\numberline {3.5}Parsing Bottom-Up}{46}{section.3.5}%
 \contentsline {subsection}{\numberline {3.5.1}Shift e Reduce}{47}{subsection.3.5.1}%
 \contentsline {section}{\numberline {3.6}Parsing top-down direzionale deterministico}{52}{section.3.6}%
-\contentsline {subsection}{\numberline {3.6.1}Cosa accade con le epsilon regole}{54}{subsection.3.6.1}%
+\contentsline {subsection}{\numberline {3.6.1}Cosa accade con le epsilon regole}{55}{subsection.3.6.1}%
