@@ -1232,3 +1232,117 @@ Questo algoritmo come abbiamo visto è più difficile da ragionarsi sopra in par
 Ma anche supponendo che questi problemi teorici vengano risolti resta il fatto che purtroppo in questo caso le grammatiche che producono il disastro sono molto più difficili da vedere rispetto alle grammatiche che producono il disastro per i parser top down. Esistono strumenti automatici che ci dicono se la grammatica è ambigua o meno per i parser bottom up (LR(0)) ma è comunque doloroso modificare quelle grammatiche malate. Notiamo che TopDown e BottoUp si usano per grammatiche deterministiche e che senza ambiguità hanno costo computazionale $O(n)$, quindi non è un problema di efficienza ma di correttezza. 
 
 Dal lato dei parser Bottom Up ci sarebbe l'algoritmo CYK (che usiamo per le grammatiche generali ed ha costo computazionale $n^3$) bello, che è l'algoritmo di Early che funziona per le grammatiche generali che in caso di non ambiguità per le grammatiche determinstiche (quelle che usiamo TopDown e BottoUP) diventa $O(n)$.
+
+\section{Parsing top-down direzionale deterministico}
+
+Vogliamo metterci nella condizione per cui la cosa che adoperiamo che ha la testina la pila e la parola ad un certo punto vede la cima della pila e la prossima letterla della parola (sotto la testina) il controllo può fare la predizione.
+In buona sostanza vogiamo una tabella, che dipende dalla grammatica, che mi dice la corripondenza tra simboli terminali e non terminali mi da la produzione, tale per cui implementare il controllo dell'automa è una banalità, tale per cui se la cima è un terminale ti dico se c'è un match o no, se la cima è un non terminale ti dico se posso fare una predizione o meno. La magia grande è la tabella che deve funzionare, non deve contenere nessuna produzione se sono in un posto in cui non dovrei essere.
+
+Adesso il punto è come produciamo questa tabella, in realtà la abbiamo già vista, perchè ad un certo punto abbiamo giocato con una grammatica che era così:
+\begin{lstlisting}
+    S -> aB
+    B -> b | aBb
+\end{lstlisting}
+
+Funziona bene perchè il primo carattere di ogni produzione è diverso, se sono in una circostanza per cui per ogni possibilità mi porta ad una produzione con il primo carattere diverso allora posso costruire la tabella:
+\begin{table}[ht!]
+  \centering
+  \begin{tabular}{|c|c|c|}
+    \hline
+    & \textbf{S} & \textbf{B} \\ \hline
+    a & S -> ab & B -> b \\ \hline
+    b &   & B -> aBb \\ \hline
+  \end{tabular}
+\end{table}
+
+Queste grammatiche si chiamano SSL(1), dove 1 sta per il numero di simboli che guardiamo dopo la testina.
+
+Per costruire la tabella prendo le produzioni della grammatica, le smonto come lato sinistro e letterina e suffisso e la produco così (se c'è un tentativo di riassegnamento mi avvisa che non è una grammatica che posso trattare):
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+Ma se la grammatica non è semplice? nella costruzione della tabella mi avverte che c'è un conflitto (cerca di mettere due entry per la stessa coppia).
+
+Questo modo di costruire i parser è facile ma utile, ad esempio è la notazione prefissa (notazione polacca) che è una notazione che non ha bisogno di parentesi, perchè il parser è in grado di capire la precedenza degli operatori. Ad esempio:
+\begin{lstlisting}
+
+\end{lstlisting}
+
+Questo modo di scrivere le espressioni è molto comodo perchè è immediato parsare le associazioni e le precedenze, ad esempio:
+\[\begin{split}
+* + 324 \rightarrow (3 + 2) * 4 \\
++ 3 * 2 4 \rightarrow 3 + (2 * 4) 
+\end{split}
+\]
+
+Questa costrizione è molto stringente, non avere due simboli uguali in due produzionzioni diverse è una cosa che non è sempre possibile, ad esempio vorrebber dire non poter avere if e if else.
+Allora una cosa su cui possiamo ragionare è questo, supponiamo di sapere per ogni forma sentenziale qual'è la prima lettere che compare nella derivazione. Mi interessa conoscere data una forma sentenziale i prefissi, di tutte le parole che questa forma sentenziale può produrre quali sono i primi caratteri di queste derivazioni.
+Se avessi questa roba qui potrei costruire la tabella in un'altra ottica, metto in tebella le produzioni basandomi sui first, ad esempio se voglio collocare A -> w e so che first(w) = a, b, f allora la tabella sarebbe così:
+\begin{table}[ht!]
+  \centering
+  \begin{tabular}{|c|c|c|}
+    \hline
+    & \textbf{A} \\ \hline
+    a & A -> w\\ \hline
+    b & A -> w  \\ \hline
+    ... & ... \\ \hline
+    f & A -> w \\ \hline
+  \end{tabular}
+\end{table}
+
+Il first di una forma sentenziale nella forma in cui nessuna delle parti può scomparire (in quanto non ci sono epsilon regole) è il primo simbolo che compare nella derivazione. Nel riempire la tabella posso fare una fattorizzazione, prendo la A e la spacco e poi prendo tutte le lettere che vengono prodotte da B e riempio la tabella:
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+Con questa cosa del first riesco a vedere i conflitti un po' in avanti, un conflitto lo ho quando due produzioni hanno lo stesso first.
+
+Si suggerirebbe un approccio ricorsivo, questo per guardare i first, ricordando che questo è perchè non abbiamo i first.
+
+\begin{lstlisting}
+  def compute_first(G):
+    def recursive_first(X):
+\end{lstlisting}
+
+Vediamo un esempio con una garmmatica di un ipotetico sistema esperto nel quale prima si indica un fatto, una sequenza di fatti è una sessione e poi si termina con una domanda:
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+Ricorsivamente possiao costruire i first, l'idea è che posso usare una regola che ha sessione a sinistra solo se sul nastro vedo uno di questi:
+\begin{table}
+  
+\end{table}
+
+E a questo punto posso costruire la tabella di derivazione, in questo caso non ci sono conflitti e quindi posso costruire la tabella:
+
+L'uso della tabella first mi consente di sapere, non tanto sulla scorta della prima letterina dei lati destri, ma sulla scorta dei first della grammatica (le letterine), se questa tabella non ha conflitti sono a posto, posso chiamare questa roba LL(1) e posso chiamare il parser che funziona:
+\begin{enumerate}
+  \item first
+  \item table if no conflitti:
+  \item parser
+\end{enumerate}
+
+Abbiamo trovato un parser deterministico lineare, lineare perchè legge ogni lettera una volta sola.
+
+\subsection{Cosa accade con le epsilon regole}
+La presenza delle epsilon regole serve a tradurre meglio l'idea semantica che ho in testa, una sessione di colloquio con il mio sistema esperto è una sequenza di fatti, potenzialmente vuota, seguita da una domanda. Per fare questa roba ho bisogno di fare sparire i fatti, quindi ho bisogno di epsilon regole.
+
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+Cominciamo col ragionare per gradi, come facciamo la tabella dei first con le epsilon regole? Quello che potrei fare è fare in modo che table sbirci non solo il primo simbolo ma un po' più in giù nella pila, in realtà vedremo che non è necessario, si potrà pre-computare una tabella.
+
+Occuparsi di first in presenza di epsilon regole non è così devastante. Qui non possiamo più fattorizzare il fatto che dobbiamo per forza prendere la prima lettera perchè non sparisce, non è vero, perchè ora può sparire perchè ci sono le epsilon regole. Non vale più $FIRST(B\beta) = FIRST(B)$. Nel caso $FIRST(B\gamma)$:
+\begin{itemize}
+  \item $\epsilon \not\in FIRST(B)$ allora $FIRST(B\gamma) = FIRST(B)$ sono nel caso di prima
+  \item $\epsilon \in FIRST(B)$ allora $FIRST(B\gamma) = (FIRST(B) - \epsilon) + FIRST(\gamma)$, dove gamma sono i simboli che seguono B. Il dramma quindi è che devo capire cosa succede a gamma.
+\end{itemize}
+
+Faccio una chiusura, first la computo per tutte le forme sentenziali, quindi una entry della tabella è una tupla:
+Riempio mettendo first smontando la forma sentenziale tranne la nullabilità il prefisso e se c'è la nullabilità il suffisso:
+\begin{lstlisting}
+  
+\end{lstlisting}
