@@ -1439,3 +1439,98 @@ Chiamando questa funzione sulla nostra grammatica otteniamo:
     
   \end{tabular}
 \end{table}
+
+\section{Full LL(1)}
+
+Dobbiamo vedere se riusciamo ad usare questa cosa del First per fare il parsing, quello che mi interessa veramente è essere in un caso deterministico, quindi in qualche modo posso costruire la tabella a patto di poter calcolare questo $FIRS(\alpha \gamma \#)$.
+
+Vediamo che per fare questo ci costruiamo una funzione, partendo da quella dell'altra volta che calcola la tabella dobbiamo estenderla per fare questo calcolo su una forma sentenziale, la chiusura funziona bene se il numero di passi è finito, ma qui non è noto a priori perchè parto da una lunghezza arbitraria, quindi l'unico modo di fare questa cosa è la ricorsione e la logica è questa:
+\begin{itemize}
+  \item se la forma sentenziale è lunga uno ritorniamo una epsilon
+  \item se c'è qualcosa da mangiare vuol dire che c'è un C e qualcos'altro. Tutto quello che viene da C lo devo prendere (perchè è il first), tranne epsilon, e poi devo vedere se C è nullabile, se lo è allora devo vedere il suffisso e quindi calcolare il first del suffisso.
+\end{itemize}
+
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+Quindi adesso posto che siamo in grado di calcolare questo FIRST posso adoperare la costruzione della tabella con la stessa logica, quindi a questo punto avrei bisogno di una tabella (che non è più una tabella) che data la lettera a mi dice se posso sostituire quella produzione. La posso sostituire guardando tutta la pila, devo in qualche modo considerare tutto la pila, non posso guardare solo la cima proprio perchè se il top sparisce sono fregato. Quindi di nuovo voglio lavorare sulla costruzione della tabella ragionando sulla possibilità che la cima sparisca, questo modifica radicalmente l'algoritmo, perchè non usa più una pila.
+Come funzina la costruzione della tabella? dato che la pila sta in quelle condizioni le possibili produzioni sono queste:
+devo smontare la pila in A, gamma e cancelletto $A, \gamma, \#$, lo smonto e vado a prendere tutte le alternative, faccio la forma sentenziale e prendo tutte le alternative di a e se trovo una produzione che è in firts della forma sentenziale. Una volta che ho testato tutte le alternative possono succedere tre cose:
+\begin{itemize}
+  \item Non ne ho trovata nessuna
+  \item Ne ho trovate più di una: non ho più il determinismo, quindi non posso costruire la tabella
+  \item Ne ho trovata una sola: allora posso costruire la tabella
+\end{itemize}
+
+La costruzione non è precomputabile e dipende da un FIRST che deve guardarsi tutta la pila ed è importante notare che in questo caso a differenza di prima non possiamo scartare delle grammatiche, ma capiamo se qualcosa non va solo a runtime.
+
+\begin{lstlisting}
+
+\end{lstlisting}
+
+Vediamo anche il parse, che è molto simile al parse no epsilon, con la differenza che non vedo una tabella precomputata ma invoco una funzione che ha il binocolo sullo stack:
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+Il punto cruciale è che purtroppo questa cosa $FIRST(\alpha \gamma \#)$ sembrerebbe non precomputabile. Un modo per risolvere un infinito come questo è quello di chiederci se vogliamo risolverlo in ogni circostanza, in questo caso noi sappiamo che se epsilon non fa parte di $FIRST(\alpha)$ allora il FIRST di tutto quello prima è uguale a $FIRST(\alpha) - \epsilon$ (il caso in cui non sparisce alpha) se invece sparisce abbiamo un po' di cosa che produco dalla tabella e la cosa che mi fa veramente male $FIRST(\alpha) - \epsilon u FIRST(\gamma \#)$.
+Quello che vorremmo calcolare è la funzione FOLLOW(A) che sono l'insieme dei terminali che mi porta ad avere $S \rightarrow x A \gamma \rightarrow x A t \gamma \#$. Stiamo dicendo che per scegliere una produzione A produce alpha guardo:
+\begin{itemize}
+  \item i caratteri che produce FIRST(alpha)
+  \item Se alpha sparisce allora guardo i caratteri dopo A, nel nostro caso usando FOLLOW(A)
+\end{itemize}
+
+Il dubbio è se questa cosa la possiamo precomputare. Andiamo per passi, vediamo prima se riusciamo a costruire la tabella, se riesco a costruire la tabella finita abbiamo ricostruito il parser.
+La calcoliamo così, guardo le letterine dentro FIRST se non c'è epsilon ho finito, se c'è devo guardare le letterine dentro FOLLOW. Quello che ci interessa è non avere conflitto nella tabella, adesso vorremmo distinguere due casi nei conflitti:
+\begin{itemize}
+  \item Conflitto FIRST FIRST: due produzioni che hanno la stessa letterina in prima posizione
+  \item Conflitto FIRST FOLLOW: due produzioni che hanno la stessa letterina in prima posizione e una delle due ha epsilon
+  \item Conflitto FOLLOW FOLLOW: due produzioni che hanno la stessa letterina in prima posizione e una delle due ha epsilon
+\end{itemize}
+
+Quindi nella costruzione della tabella mi tengo delle tabelle intermedie giusto per sapere devo è avvenuto il conflitto.
+Provo tutti i non epsilon e li metto nella tabella, se c'è un epsilon provo tutti i Follow e li metto nella tabella (a parte la gestione degli errori)
+
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+Vediamo come computare FOLLOW, prendo questa produzione $z \rightarrow \alpha A \beta$ e la uso per calcolare $FOLLOW(A)$. Per stabilire cosa c'è nel FOLLOW(A) devo guardare tutte le possibili fattorizzazioni, quindi ci fa senz'altro i $FIRST(\beta)$ ma il dramma è sempre il solito, se beta sparisce cosa ci metto dentro? se sparisce ci sarà dentro banalmente FOLLOW(x). Per costruire chi segue un non terminale A, devo considerare i lati sinistri delle produzioni, parto da FIRST di beta ma se questo sparisce semplicemente un lato sinisto di A sarà x.
+Il follow di un terminale non mi interessa, non avrebbe senso. 
+
+\begin{lstlisting}
+
+
+\end{lstlisting}
+
+Vediamo questo con l'esempio dei FACTS and QUESTION, quella con le epsilon regole. La grammatica è questa:
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+%metti esempio tabelle first e follow
+
+A questo punto vediamo il parser che è tornato banale perchè guardiamo la tabella precomputata (è identico al parser senza epsilon regole), l'unica cosa che cambia è la costruzione della tabella e il calcolo del follow.
+\begin{lstlisting}
+
+\end{lstlisting}
+
+% abbiamo visto esempio di errori
+
+\subsection{Riparare i conflitti}
+Riparare i conflitti è facile, l'idea è questa. Le cose vanno male quando succedono delle cose così $A \rightarrow \alpha \beta | \alpha \gamma$, si rompe quando due produzioni cominciano con la stessa cosa. 
+Una tecnica abbastanza banale per risolvere questi problemi è la fattorizzazione:
+\[\begin{split}
+  N \rightarrow \beta | \gamma \\
+  A \rightarrow \alpha N
+\end{split}\]
+
+Questa cosa non risolve sempre perchè se beta e gamma hanno un intersezione non vuota sono a capo, ma spero di poter differenziare i simboli.
+
+Vediamo un esempio con una grammatica delle espressioni aritmetiche:
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+Trovo degli errori e posso provare a fattorizzare la grammatica:

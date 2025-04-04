@@ -38,3 +38,5 @@
 \contentsline {subsection}{\numberline {3.5.1}Shift e Reduce}{47}{subsection.3.5.1}%
 \contentsline {section}{\numberline {3.6}Parsing top-down direzionale deterministico}{52}{section.3.6}%
 \contentsline {subsection}{\numberline {3.6.1}Cosa accade con le epsilon regole}{55}{subsection.3.6.1}%
+\contentsline {section}{\numberline {3.7}Full LL(1)}{57}{section.3.7}%
+\contentsline {subsection}{\numberline {3.7.1}Riparare i conflitti}{59}{subsection.3.7.1}%
