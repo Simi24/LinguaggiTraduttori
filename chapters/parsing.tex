@@ -1442,7 +1442,7 @@ Chiamando questa funzione sulla nostra grammatica otteniamo:
 
 \section{Full LL(1)}
 
-Dobbiamo vedere se riusciamo ad usare questa cosa del First per fare il parsing, quello che mi interessa veramente è essere in un caso deterministico, quindi in qualche modo posso costruire la tabella a patto di poter calcolare questo $FIRS(\alpha \gamma \#)$.
+Dobbiamo vedere se riusciamo ad usare questa cosa del First per fare il parsing, quello che mi interessa veramente è essere in un caso deterministico, quindi in qualche modo posso costruire la tabella a patto di poter calcolare questo $FIRST(\alpha \gamma \#)$. In buona sostanza quello che vorremmo e' calcolare TABLE in funzione fi FIRST.
 
 Vediamo che per fare questo ci costruiamo una funzione, partendo da quella dell'altra volta che calcola la tabella dobbiamo estenderla per fare questo calcolo su una forma sentenziale, la chiusura funziona bene se il numero di passi è finito, ma qui non è noto a priori perchè parto da una lunghezza arbitraria, quindi l'unico modo di fare questa cosa è la ricorsione e la logica è questa:
 \begin{itemize}
@@ -1451,7 +1451,20 @@ Vediamo che per fare questo ci costruiamo una funzione, partendo da quella dell'
 \end{itemize}
 
 \begin{lstlisting}
-  
+def make_first_function(G):
+
+  FIRST = compute_first(G)
+
+  @show_calls(True)
+  def FIRSTf(w):
+    if not w: return {e} # gestisce il caso provocato dalle fattorizzazioni con |w| = 1, ossia |d| = 0
+    C, *d = w
+    if e in FIRST[(C, )]:
+      return (FIRST[(C, )] - {e}) | FIRSTf(d)  
+    else:
+      return FIRST[(C, )]
+
+  return FIRSTf
 \end{lstlisting}
 
 Quindi adesso posto che siamo in grado di calcolare questo FIRST posso adoperare la costruzione della tabella con la stessa logica, quindi a questo punto avrei bisogno di una tabella (che non è più una tabella) che data la lettera a mi dice se posso sostituire quella produzione. La posso sostituire guardando tutta la pila, devo in qualche modo considerare tutto la pila, non posso guardare solo la cima proprio perchè se il top sparisce sono fregato. Quindi di nuovo voglio lavorare sulla costruzione della tabella ragionando sulla possibilità che la cima sparisca, questo modifica radicalmente l'algoritmo, perchè non usa più una pila.
@@ -1466,15 +1479,52 @@ devo smontare la pila in A, gamma e cancelletto $A, \gamma, \#$, lo smonto e vad
 La costruzione non è precomputabile e dipende da un FIRST che deve guardarsi tutta la pila ed è importante notare che in questo caso a differenza di prima non possiamo scartare delle grammatiche, ma capiamo se qualcosa non va solo a runtime.
 
 \begin{lstlisting}
+def make_table_function(G):
 
-\end{lstlisting}
+  FIRSTf = make_first_function(G)
 
-Vediamo anche il parse, che è molto simile al parse no epsilon, con la differenza che non vedo una tabella precomputata ma invoco una funzione che ha il binocolo sullo stack:
-\begin{lstlisting}
+  def TABLEf(stack, a):
+    prods = set()
+    A, *Ts = list(stack) # AT#
+    for a in G.alternatives(A):
+      w = a + tuple(Ts) # aT#
+      if a in FIRSTf(w): prods.add(Production(A, a))
+    if len(prods) == 1:
+      return prods.pop()
+    elif len(prods) > 1:
+      warn(f'Conflict {prods=}')
+    return None
   
+  return TABLEf
 \end{lstlisting}
 
-Il punto cruciale è che purtroppo questa cosa $FIRST(\alpha \gamma \#)$ sembrerebbe non precomputabile. Un modo per risolvere un infinito come questo è quello di chiederci se vogliamo risolverlo in ogni circostanza, in questo caso noi sappiamo che se epsilon non fa parte di $FIRST(\alpha)$ allora il FIRST di tutto quello prima è uguale a $FIRST(\alpha) - \epsilon$ (il caso in cui non sparisce alpha) se invece sparisce abbiamo un po' di cosa che produco dalla tabella e la cosa che mi fa veramente male $FIRST(\alpha) - \epsilon u FIRST(\gamma \#)$.
+Vediamo anche il parse, che è molto simile al parse no epsilon, con la differenza che non vedo una tabella precomputata ma invoco una funzione che ha il binocolo sullo stack.
+Le principali differenze sono:
+\begin{itemize}
+  \item ignorare le epsilon aggiunte in pila (per via delle epsilon regole)
+  \item usare la funzione TABLEf per calcolare la produzione da usare (invece di consultare la tabella TABLE)
+\end{itemize}
+
+\begin{lstlisting}
+def full_parse(G, TABLEf, INPUT):
+  tid = TopDownInstantaneousDescription(G, INPUT)
+  while not tid.is_done():
+    if tid.top() in G.N:
+      P = TABLEf(tid.stack, tid.head())
+      if P is None:
+        warn(f'No production for ({tid.top()}, {tid.head()}) at {tid.steps}')
+        return None
+      tid = tid.predict(P)
+    else:
+      if tid.top() == tid.head():
+        tid = tid.match()
+      else:
+        warn(f'Expecting {tid.top()}, got {tid.head()}')
+        return None
+  return Derivation(G).leftmost(tid.steps)
+\end{lstlisting}
+
+Il punto cruciale è che purtroppo questa cosa $FIRST(\alpha \gamma \#)$ sembrerebbe non precomputabile. Un modo per risolvere un infinito come questo è quello di chiederci se vogliamo risolverlo in ogni circostanza, in questo caso noi sappiamo che se epsilon non fa parte di $FIRST(\alpha)$ allora il FIRST di tutto quello prima è uguale a $FIRST(\alpha) - \epsilon$ (il caso in cui non sparisce alpha) se invece sparisce abbiamo un po' di cosa che produco dalla tabella e la cosa che mi fa veramente male $FIRST(\alpha) - \epsilon \cup FIRST(\gamma \#)$.
 Quello che vorremmo calcolare è la funzione FOLLOW(A) che sono l'insieme dei terminali che mi porta ad avere $S \rightarrow x A \gamma \rightarrow x A t \gamma \#$. Stiamo dicendo che per scegliere una produzione A produce alpha guardo:
 \begin{itemize}
   \item i caratteri che produce FIRST(alpha)
@@ -1493,34 +1543,136 @@ Quindi nella costruzione della tabella mi tengo delle tabelle intermedie giusto 
 Provo tutti i non epsilon e li metto nella tabella, se c'è un epsilon provo tutti i Follow e li metto nella tabella (a parte la gestione degli errori)
 
 \begin{lstlisting}
-  
+def compute_table(G, FIRST, FOLLOW):
+
+  TABLE = Table(2)
+  FIRST_TABLE = Table(2)
+  FOLLOW_TABLE = Table(2)
+
+  for P in G.P:
+    A, alpha = P
+    for a in FIRST[alpha] - {epsilon}:
+      if FIRST_TABLE[A, a] is not None:
+        warn(f'First/first conflict on ({A}, {a}) for production {P} (was {FIRST_TABLE[A, a]})')
+      else:
+        FIRST_TABLE[A, a] = P
+        TABLE[A, a] = P
+    if epsilon in FIRST[alpha]:
+      for a in FOLLOW[A]:
+        if FIRST_TABLE[A, a] is not None:
+          warn(f'First/follow conflict on ({A}, {a}) for production {P} (was {FIRST_TABLE[A, a]})')
+        if FOLLOW_TABLE[A, a] is not None:
+          warn(f'Follow/follow conflict on ({A}, {a}) for production {P} (was {FOLLOW_TABLE[A, a]})')
+        if FIRST_TABLE[A, a] is None and FOLLOW_TABLE[A, a] is None:
+          FOLLOW_TABLE[A, a] = P
+          TABLE[A, a] = P
+  return TABLE
 \end{lstlisting}
+
+Se la tabella contiene al più una produzione per ogni cella, allora la grammatica è detta strong LL(1). Osservate che se una grammatica è full LL(1) allora è anche strong LL(1).
 
 Vediamo come computare FOLLOW, prendo questa produzione $z \rightarrow \alpha A \beta$ e la uso per calcolare $FOLLOW(A)$. Per stabilire cosa c'è nel FOLLOW(A) devo guardare tutte le possibili fattorizzazioni, quindi ci fa senz'altro i $FIRST(\beta)$ ma il dramma è sempre il solito, se beta sparisce cosa ci metto dentro? se sparisce ci sarà dentro banalmente FOLLOW(x). Per costruire chi segue un non terminale A, devo considerare i lati sinistri delle produzioni, parto da FIRST di beta ma se questo sparisce semplicemente un lato sinisto di A sarà x.
 Il follow di un terminale non mi interessa, non avrebbe senso. 
 
 \begin{lstlisting}
+def compute_follow(G, FIRST):
 
+  FOLLOW = Table(1, set)
+  FOLLOW[G.S] = {HASH}
 
+  @closure
+  def complete_follow(FOLLOW):
+    for X, w in G.P:
+      for Y in suffixes(w): # X -> alpha A Beta (alpha e' mangiato dal suffisso)
+        A, *Beta = Y
+        if A in G.T: continue
+        FOLLOW[A] |= FIRST[Beta] - {epsilon}
+        if epsilon in FIRST[Beta]: FOLLOW[A] |= FOLLOW[X]
+    return FOLLOW
+  
+  return complete_follow(FOLLOW)
 \end{lstlisting}
 
 Vediamo questo con l'esempio dei FACTS and QUESTION, quella con le epsilon regole. La grammatica è questa:
 \begin{lstlisting}
-  
+G = Grammar.from_string("""
+Session -> Facts Question | ( Session ) Session
+Facts -> Fact Facts | epsilon
+Fact -> ! STRING
+Question -> ? STRING
+""")
 \end{lstlisting}
 
-%metti esempio tabelle first e follow
+\newpage
+
+Precomputiamo prima le tabelle first e follow:
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.4\textwidth]{images/Parsing/firstFollowEs.png}
+\end{figure}
+
+Possiamo quindi costruire la tabella per la grammatica:
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/Parsing/tableFirstFollow.png}
+\end{figure}
 
 A questo punto vediamo il parser che è tornato banale perchè guardiamo la tabella precomputata (è identico al parser senza epsilon regole), l'unica cosa che cambia è la costruzione della tabella e il calcolo del follow.
 \begin{lstlisting}
-
+def parse(G, TABLE, INPUT):
+  tid = TopDownInstantaneousDescription(G, INPUT)
+  while not tid.is_done():
+    if tid.top() in G.N:
+      P = TABLE[tid.top(), tid.head()]
+      if P is None:
+        warn(f'No production for ({tid.top()}, {tid.head()}) at {tid.steps}')
+        return None 
+      tid = tid.predict(P)
+    else:
+      if tid.top() == tid.head():
+        tid = tid.match()
+      else:
+        warn(f'Expecting {tid.top()}, got {tid.head()}')
+        return None   
+  return Derivation(G).leftmost(tid.steps)
 \end{lstlisting}
 
-% abbiamo visto esempio di errori
+\subsection{Conflitti}
+Vediamo i vari casi di conflitto attraverso degli esempi.
+Introduciamo una funzione di comodo che faccia i vari passi di computazione:
+\begin{lstlisting}
+def fft(G):
+  FIRST = compute_first(G)
+  FOLLOW = compute_follow(G, FIRST)
+  FF = Table(2)
+  for N in G.N: 
+    FF[N, 'First'] = FIRST[(N, )]
+    FF[N, 'Follow'] = FOLLOW[N]
+  return FF, compute_table(G, FIRST, FOLLOW)
+\end{lstlisting}
+
+\subsubsection{Caso first/first}
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.4\textwidth]{images/Parsing/first-first.png}
+\end{figure}
+
+\subsubsection{Caso first/follow}
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.4\textwidth]{images/Parsing/first-follow.png}
+\end{figure}
+
+\subsubsection{Caso follow/follow}
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.4\textwidth]{images/Parsing/follow-follow.png}
+\end{figure}
 
 \subsection{Riparare i conflitti}
-Riparare i conflitti è facile, l'idea è questa. Le cose vanno male quando succedono delle cose così $A \rightarrow \alpha \beta | \alpha \gamma$, si rompe quando due produzioni cominciano con la stessa cosa. 
-Una tecnica abbastanza banale per risolvere questi problemi è la fattorizzazione:
+Riparare i conflitti è facile, l'idea è questa. Le cose vanno male quando succedono delle cose così $A \rightarrow \alpha \beta | \alpha \gamma$, si rompe quando due produzioni cominciano con la stessa cosa. Possiamo facilmente notare che e' impossibile in questo caso decidere che produzione prendere sulla base di $FIRST(\alpha)$. 
+Una tecnica abbastanza banale per risolvere questi problemi è la fattorizzazione, mediante l'introduzione di un nuovo terminale N possiamo cambiare le due produzioni e sperare che $FIRST(\beta)$ e $FIRST(\gamma)$ siano disgiunti.
 \[\begin{split}
   N \rightarrow \beta | \gamma \\
   A \rightarrow \alpha N
@@ -1528,9 +1680,35 @@ Una tecnica abbastanza banale per risolvere questi problemi è la fattorizzazion
 
 Questa cosa non risolve sempre perchè se beta e gamma hanno un intersezione non vuota sono a capo, ma spero di poter differenziare i simboli.
 
-Vediamo un esempio con una grammatica delle espressioni aritmetiche:
+Proviamo ad usare, come esempio, una grammatica per operazioni aritmetiche in cui ogni operatore coinvolga esattamente due sottoespressioni:
 \begin{lstlisting}
-  
+G = Grammar.from_string("""
+E -> T + T | T
+T -> F * F | F 
+F -> ( E ) | i
+""")
 \end{lstlisting}
 
-Trovo degli errori e posso provare a fattorizzare la grammatica:
+\newpage
+
+Troviamo dei conflitti:
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.4\textwidth]{images/Parsing/conflitti.png}
+\end{figure}
+
+Che possono essere risolti fattorizzando sia T che F:
+\begin{lstlisting}
+G = Grammar.from_string("""
+E -> T E'
+E' -> + T | epsilon
+T -> F F'
+F' -> * F | epsilon
+F -> ( E ) | i
+""")
+\end{lstlisting}
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.4\textwidth]{images/Parsing/conflittiRisolti.png}
+\end{figure}
