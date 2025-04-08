@@ -44,3 +44,6 @@
 \contentsline {subsubsection}{Caso first/follow}{62}{section*.31}%
 \contentsline {subsubsection}{Caso follow/follow}{63}{section*.33}%
 \contentsline {subsection}{\numberline {3.7.2}Riparare i conflitti}{63}{subsection.3.7.2}%
+\contentsline {section}{\numberline {3.8}Parser ricorsivo discendente predittivo}{64}{section.3.8}%
+\contentsline {subsection}{\numberline {3.8.1}Tokenizzazione}{65}{subsection.3.8.1}%
+\contentsline {subsection}{\numberline {3.8.2}Interprete, valutazione deglle espressioni}{66}{subsection.3.8.2}%

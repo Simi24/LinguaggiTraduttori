@@ -1712,3 +1712,79 @@ F -> ( E ) | i
   \centering
   \includegraphics[width=0.4\textwidth]{images/Parsing/conflittiRisolti.png}
 \end{figure}
+
+\section{Parser ricorsivo discendente predittivo}
+
+Scriviamo una famiglia di funzioni ricorsive ed una delle quali effettuerà il parsing del documento. Quello che ci aveva bloccato l'altra volta era che non sapevamo cosa fare quando c'erano due regole, prima prendevamo solo la prima possibilità, però non è detto che la prima scelta sia sempre quella giusta.
+La soluzione a questo problema è avere un parser ricorsivo discendente predittivo, abbiamo messo l'automa nelle condizioni di guardare il nastro e la pila, e avendo la tabella possiamo decidere cosa fare. Prendiamo in mano la TABLE e la adopero per costruire un parser ricorsivo discendente che quando deve decidere cosa fare guarda la tabella e non prende per forza la prima alternativa.
+
+I passi che faremo sono:
+\begin{itemize}
+  \item Costruzione manuale del riconoscitore
+  \item Costruzione del parse che restituisca i passi di derivazione
+  \item Costruzione automatica del parser (una funzione che crea la funzione parser)
+  \item Costruire un interprete
+\end{itemize}
+
+Una cosa molto interessante nel parser topdwon è che si può mischiare il parsing al riconoscimento, potrei mano a mano che mangio l'input calcolare l'espressione (nel caso di grammatica aritmetica), possiamo quindi mischiare il processo di parse con quello di interpretazione. Nel caso dell'interprete è cruciale sciogliere i terminali generici (i -> qui ad un certo punto ci sarà un numero). Dovremo rendere più esplicito il processo di parsing e tokenizzazione.
+
+Partiamo da una grammatica per le espressioni aritmetiche:
+\begin{lstlisting}
+
+\end{lstlisting}
+
+Con questa grammatica possiamo costruire la tabella:
+
+
+Data questa tabella mi costruisco le funzioni parse per ogni riga della tabella ogni funzione è costruita sulla base di quello che c'è nella riga della tabella (se incontri questo usa questa produzione), consideriamo che nella tabella gli spazi vuoti sono quelli di errore, non ci sono produzioni e devo segnalare l'errore.
+\begin{lstlisting}
+
+\end{lstlisting}
+
+Usa l'uguaglianza con il token (che al momento è un mistero ma rappresenta quello che c'è sul nastro) e in base a questa uguaglianza decide se fare una produzione o meno, se ho delle epsilon regole non faccio niente, altrimenti usano il lato destro, se c'è un terminale lo consumano e se c'è un non terminale fanno il parser di quello.
+
+\subsection{Tokenizzazione}
+Ci manca di capire cosa fa la funzione consume e il tokenizzatore. Ci piacerebbe molto ragionare in questo modo, l'input è una sequenza di caratteri e le cose che adopero per descrivere la grammatica sono oggetti più sofisticati. Nella libreria che stiamo usando stiamo usando le str di Python che hanno un brutto difetto, non esistono i caratteri (ci sono eventualmente stringhe lunghe 1). Noi stiamo usando come parole del linguaggio le tuple di simboli (o stringhe lunghe 1).
+\begin{itemize}
+  \item Simbloli -> stringhe
+  \item Parole o forme sentenziali -> tuple di simboli
+  \item Imput -> sequenza di simboli -> tuple
+\end{itemize}
+
+Quello su cui dobbiamo ragionare è come trasformare le sentenze della grammatica e trasformarla correttamente in una tupla formattata correttamente per il parser. Abbiamo quindi bisogno di un processo che prenda la forma sentenziale, la trasformi in una opportuna forma che il parser possa adoperare:
+\[
+'34 + 2' \rightarrow ('3', '4', '+', '2')
+\]
+
+Questa cosa si chiama TOKENIZZAZIONE, che ha l'obiettivo di prendere una sequenza di caratteri di un alfabeto (tipo ASCII) e trasformarla in una sequenza di simboli.
+
+Abbiamo una prima grammatica che è quella di tokenizzazione, è quella che vedere la stringa vera e propria e ha un insieme di terminali che si chiama alfabeto di macchina (la roba che sta scritta dentro il file). Quella grammatica lì è una collezione di linguaggi regolari, l'idea è che voglio frazionare la stringa usando una serie di grammatiche regolari.
+Teniamoci divisi i non terminali e le produzioni, distinguiamo i simboli distinti, tanti linguaggi regolai e il simbolo distinto è il nome di quello che vediamo.
+
+I terminali del parser sono i simboli distinti del tokenizzatore. Il parser lavora dalle teste degli alberi del tokenizzatore e il tokenizzatore lavora dalle stringhe alle teste degli alberi del tokenizzatore.
+Il tokenizzatore associa anche ad ogni token il sua value (il token è il simbolo distinto e il value è il valore che ha), ad esempio un token NUMBER può avere un valore 37. Inoltre deve essere in grado di fare scrorrere il puntatore tra i non terminali solo nel caso in cui la produzione sia corretta.
+
+Quello che vedremo è quella che fa anche ANTLR, che useremo, produce una prima grammatica che è quella di tokenizzazione e poi per ciascun non terminale produce tramite espressioni regolari una grammatica che si mangia i simboli distinti e produce i token.
+La grammatica di tokenizzazione la rappresentiamo come un unione di espressioni regolari:
+\begin{lstlisting}
+
+\end{lstlisting}
+
+Adesso devo operativamente usare questa cosa per ottenere il token ed il valore.
+Abbiamo una funzione consume che consuma il token e il valore, quindi la funzione consume è una funzione che mi dice se il token che ho in testa è quello che mi aspetto, se è così lo consumo e lo restituisco. Se non è così mi da errore. Faccio quello che abbiamo visto con le espressioni regolari, metto in or tutte le espressioni regolari e tra quegli or avrò a non null solo il simbolo che ho matchato. Quando ha finito di iterare invece di lanciare un eccezione restituisce un token speciale di tappo.
+\begin{lstlisting}
+
+\end{lstlisting}
+
+\subsection{Interprete, valutazione deglle espressioni}
+Usando il parser posso tornare indietro con il tokenizzatore usando i valori per tirare fuori il valore dell'espressione. Costruiamo delle espressioni ricorsive per cui per ogni terminale mi danno il valore dell'espressione.
+
+\begin{lstlisting}
+
+\end{lstlisting}
+
+Posso estendere la grammatica per fare in modo che il parser prenda anche delle espressioni regolari, in particolar modo con l'asterisco indichiamo che possiamo mettere N termini come quello. Nelle funzioni indichiamo questa cosa con un while, quindi se ho un asterisco lo metto dentro un while, devo però stare attento a quando devo fermarmi dentro il while:
+\begin{lstlisting}
+
+\end{lstlisting}
+
