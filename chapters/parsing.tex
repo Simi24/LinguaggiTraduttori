@@ -1788,3 +1788,97 @@ Posso estendere la grammatica per fare in modo che il parser prenda anche delle 
 
 \end{lstlisting}
 
+\section{Parsing deterministico bottom-up}
+
+Ci serve un modo per eliminare il non determinismo, in questo caso non possiamo usare la tabella perche' qui non guardiamo neanche il nastro per scegliere se fare shift o reduce.
+L'idea e' che la pila sara' sia la sequenza di stati dell'automa, quindi maneggiare la pila sara' come maneggiare con gli stati dell'automa, con la cosa bella che togliere le cose dalla pila significa andare indietro nella storia dell'automa.
+
+\subsection{Automa di KNOT}
+La cosa cruciale e' come costruire questo automa. Usa degli accorgimenti molto simili a quando ci siamo convinti della regolarita' del linguaggio, qui per fare questa costruzione si usa storicamente un'altra rappresentazione.
+
+\subsubsection{Item}
+Si costruisce a partire da una cosa che si chiama ITEM, un item e' una produzione annotata in cui scelgo un modo per indicare quanta parte della produzione ho mangiato con un pallino che indica che la parte a sinistra del pallino e' stata mangiata e la parte a destra del pallino e' quella che devo ancora mangiare $A \rightarrow \alpha \cdot \beta$.
+Questi oggetti saranno usati per rappresentare la computazione dell'automa che ci dice se dobbiamo fare shift o reduce. Per usare questi item dobbiamo riflettere su due aspetti:
+\begin{itemize}
+  \item Come si passa da un item all'altro
+  \item Vorremmo arrivare a compimento un automa deterministico. Sappiamo che si determizza con la power construction. Noi ragioneremo con una epsilon closure.
+\end{itemize}
+
+Una cosa cruciale dell'item e' che quel pallino si sposta verso destra (ogni volta che consumo una regola) e' il superamento di un simbolo che puo' fare sfruttando un terminale o un non terminale ed in ogni caso quello che mi interessa e' quello che viene dopo il pallino perche' e' la modifica che posso apportare al mio item, possiamo trovarci anche nel caso in cui il pallino e' alla fine della produzione, significa che quella produzione l'ho usata tutta.
+
+La libreria Liblet contiene un po' di questa zuppa, partiamo da una grammatica MCD:
+\begin{lstlisting}
+
+\end{lstlisting}
+
+la libreria ci permette di costruire un item a partire da una produzione, e possiamo dirgli di avanzare o meno:
+\begin{lstlisting}
+
+\end{lstlisting}
+
+L'idea di questo item e' che rappresenta un atto di derivazione, se mi trovo a sinistra di un simbolo non terminale potrei proseguire oppure cominciare a consumare una qualunque della alternative che ha quel simbolo a sinistra. Se ho questo item $A \rightarrow \alpha \cdot B \beta$ andando avanti mi trovere a sinistra di un non terminale, che significa trovarsi a sinistra di tutte le sue alternative. L'idea della epsilon chiusura e' che ogni volta che il pallino e' a sinistra di un non terminale mi trovo nella stessa condizione in cui sono a sinistra di una qualsiasi sua alternativa $B_n \rightarrow \cdot \beta$.
+Trovarsi davanti ad un non terminale significa chidersi che sua alternativa adoperare, mettiamo tutte questa alternative in un set, che ci porta ad avere degli item set.
+Questo e' il codice di questa idea:
+\begin{lstlisting}
+
+\end{lstlisting}
+
+\subsubsection{Costruzione dell'automa}
+Ora vogliamo costruire l'automa, prima abbiamo costruito gli stati (rappresentano la possibile circostanza del nostro parsing)
+
+Per noi lo stato iniziale dell'automa e' l'epsilon chiusura di S, il pallino a sinistra di tutte le alternative di S.
+
+La funzione di transizione di questo automa e' la seguente, posso spostarmi da uno stato ai suoi successivi transendo a partire da qualunque simbolo, prendo un elemento dell'item set, chiamo la funzione advance che mi fa andare avanti e questo mi portera' ad avere altri item set che poi chiudo:
+\begin{lstlisting}
+
+\end{lstlisting}
+
+Gli stati finali dell'automa, nell'idea iniziale che la condizione che ci piace e' quando terminiamo una produzione, saranno gli item set in cui sono in queste condizioni $A \rightarrow \alpha \cdot$, ho una sola alternativa di sostituzione.
+
+\subsubsection{Costruzione del parser}
+Parto da q0, poi ho una tranzione x che mi porta ad altri stati, li provo tutti, faccio una nuova transizione e vado avanti cosi'. Sostanzialmente e' una visita in ampiezza, ogni visita mi creera' dei nuovi insiemi e vado avanti fino a che non trovo uno stato finale.
+Da notare che mettiamo in coda alla grammatica un tappo, cosi' da sapere quando abbiamo finito di mangiare che mi evita di essere in una situazione in cui l'automa mi dica che ha finito quando non e' vero.
+
+L'algoritmo e' la solita visita in ampiezza, mi tengo tutte le transizioni e gli stati e le provo tutte, sposta il pallino e se vede un non terminale ci mette dentro tutte le alternative:
+\begin{lstlisting}
+  
+\end{lstlisting}
+
+Esttamente come la costruzione della tabella, la costruzione dell'automa e' l'elemento discriminante che ci dice se la grammatica e' LR(0) o meno. Se la costruzione dell'automa termina con uno stato finale allora la grammatica e' LR(0), altrimenti non lo e' (non ci sono conflitti).
+
+%metti immagine automa, si capisce che fa ogni scelta di consumare qualcosa, poi quando arriva ad un punto in cui il pallino e' davanti ad un non terminale mette tutte le sue alternative
+
+\subsubsection{Parsing con un automa a pila}
+L'idea e' che faccio il parsing seguendo l'automa a pila, mi muovo sul grafo e mano mano che mi muovo pusho gli stati sulla pila, quando arrivo ad uno stato finale tolgo quella produzione, torno indietro togliendo quella produzione dallo stato precedente.
+
+Noi guardiamo solo la pila, non sempre necessariamente consumando lo stato che c'e' sulla cima, quindi l'automa spia quello che c'e' sulla pila, e' un po' diverso da un automa a pila.
+Se la cima della pila e' uno stato finale lo tiro fuori e lo smonto in un lato sinistro, lato destro e la posizione del pallino, significa che ho visto che un non terminale produce solo alpha, quindi so che la riduzione da fare e' quella. Ho sbattuto su uno stato finale, fai la riduzione che c'e' scritta dentro. Adesso devo riavvolgere la computazione facendo tanti pop quanti elementi ci sono nella parte destra della produzione. A questo punto devo scegliere in che direzione andare, siccome ho deciso di fare una riduzione con un non terminale mi sposto avanti seguendo lo stato del non terminale che ho scelto per la riduzione.
+Se invece non sono in uno stato finale, vado a vedere nella cima del nastro e lo shift che devo fare e' decisa da quello che c'e' sulla cima della pila. Quando devo fare uno shift guardo quello che ho sul nastro e faccio lo shift seguendo quello che mi dice il nastro.
+L'idea cruciale e' che adopero la pila per tenere traccia di quello che sto computando.
+Da notare che produciamo una derivazione right-most, ad ogni passo di consume tiro fuori una regola di derivazione, che se poi leggo da sinistra verso destra ho proprio i passi di derivazione partendo da S.
+
+\begin{lstlisting}
+
+\end{lstlisting}
+
+\subsubsection{Conflitti}
+Possiamo vedere degli esempi di grammatiche piu' sfigate per cui il grafo non va bene, la costruzione del grafo mi porta ad avere un conflitto, ho uno stato in cui ho sia un pallino in fondo sia in un pallino che mi porterebbe a fare uno shift e l'automa non sa cosa fare, questo si chiama conflitto shift-reduce.
+%metti immagine conflitto shift reduce
+
+L'altra circostanza e' questa, sono nel caso di un loop, mi trovo in uno stato in cui posso fare due riduzione, e' un conflitto reduce-reduce.
+%metti immagine conflitto reduce reduce
+
+Osserviamo che non possono mai esserci conflitti tra shift, perche' lo shift e' dato dal carattere sul nastro, non avrebbe senso un conflitto.
+
+I conflitti LR non si vedono altrimenti se non costruire l'automa e vedere se e' rotto, non c'e' modo di vederli dalla grammatica. 
+Cosa succede quando sono in una situazione di conflitto in LL o LR, un conflitto e' uno stato di non determinismo quindi la strada generalmente e' aumentare il look ahed, quindi se sono in una situazione di conflitto shift-reduce posso aumentare il look ahed e vedere se il prossimo simbolo mi da un indizio su cosa fare, LR(N). E' una strategia noiosissima perche' dovrei vedere molti piu' stati.
+
+\subsection{Tabelle GOTO e }
+Quello che si fa veramente nella pratica e' codificare l'automa, inizialmente si mettonono in una tabella tutti gli stati dell'automa:
+
+Se quella tabella ha avuto successo ho anche una mappa per fare le sostituzioni quando devo fare le reduce con le transizioni dell'automa:
+
+
+Poi mi ci vuole la tabella delle azioni, sono nello stato n ma qui cosa faccio shift o reduce, contiene tutti gli stati in cui faccio una reduce ed e' una mappa tra il numero dello stato e la riduzione da fare:
+
+A questo punto il parser deve tenere il nastro e la pila e quello che devo tenere sulla pila e' la sequenza degli stati, di fatto si puo' provare a scriverlo anche senza le porcate di python che permette di tenere nella pila i set.
