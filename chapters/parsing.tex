@@ -2033,7 +2033,12 @@ def compute_lr0_automaton(G):
 Esttamente come la costruzione della tabella, la costruzione dell'automa e' l'elemento discriminante che ci dice se la grammatica e' LR(0) o meno. Se la costruzione dell'automa termina con uno stato finale allora la grammatica e' LR(0), altrimenti non lo e' (non ci sono conflitti).
 
 Guardando l'automa si capisce che fa ogni scelta di consumare qualcosa, poi quando arriva ad un punto in cui il pallino e' davanti ad un non terminale mette tutte le sue alternative.
-%TODO:Immagine automa
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/Parsing/automa.png}
+\end{figure}
+
 \subsubsection{Parsing con un automa a pila}
 L'idea e' che faccio il parsing seguendo l'automa a pila, mi muovo sul grafo e mano mano che mi muovo pusho gli stati sulla pila, quando arrivo ad uno stato finale tolgo quella produzione, torno indietro togliendo quella produzione dallo stato precedente.
 
@@ -2068,11 +2073,18 @@ Da notare che produciamo una derivazione right-most, ad ogni passo di consume ti
 
 \subsubsection{Conflitti}
 Possiamo vedere degli esempi di grammatiche piu' sfigate per cui il grafo non va bene, la costruzione del grafo mi porta ad avere un conflitto, ho uno stato in cui ho sia un pallino in fondo sia in un pallino che mi porterebbe a fare uno shift e l'automa non sa cosa fare, questo si chiama conflitto shift-reduce.
-%metti immagine conflitto shift reduce
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.6\textwidth]{images/Parsing/conflitto_shift_reduce.png}
+\end{figure}
 
 L'altra circostanza e' questa, sono nel caso di un loop, mi trovo in uno stato in cui posso fare due riduzione, e' un conflitto reduce-reduce.
-%metti immagine conflitto reduce reduce
 
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/Parsing/conflitto_reduce_reduce.png}
+\end{figure}
 Osserviamo che non possono mai esserci conflitti tra shift, perche' lo shift e' dato dal carattere sul nastro, non avrebbe senso un conflitto.
 
 I conflitti LR non si vedono altrimenti se non costruire l'automa e vedere se e' rotto, non c'e' modo di vederli dalla grammatica. 

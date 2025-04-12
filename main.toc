@@ -52,6 +52,6 @@
 \contentsline {subsubsection}{Item}{69}{section*.38}%
 \contentsline {subsubsection}{Costruzione dell'automa}{71}{section*.39}%
 \contentsline {subsubsection}{Costruzione del parser}{71}{section*.40}%
-\contentsline {subsubsection}{Parsing con un automa a pila}{72}{section*.41}%
-\contentsline {subsubsection}{Conflitti}{73}{section*.42}%
-\contentsline {subsection}{\numberline {3.9.2}Tabelle GOTO e ACTIONS}{73}{subsection.3.9.2}%
+\contentsline {subsubsection}{Parsing con un automa a pila}{72}{section*.42}%
+\contentsline {subsubsection}{Conflitti}{73}{section*.43}%
+\contentsline {subsection}{\numberline {3.9.2}Tabelle GOTO e ACTIONS}{74}{subsection.3.9.2}%
