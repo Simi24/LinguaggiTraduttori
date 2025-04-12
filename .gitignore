@@ -5,3 +5,5 @@ main.log
 main.out
 **/*.aux
 main.synctex.gz
+*.fls
+main.toc

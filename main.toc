@@ -45,13 +45,13 @@
 \contentsline {subsubsection}{Caso follow/follow}{63}{section*.33}%
 \contentsline {subsection}{\numberline {3.7.2}Riparare i conflitti}{63}{subsection.3.7.2}%
 \contentsline {section}{\numberline {3.8}Parser ricorsivo discendente predittivo}{64}{section.3.8}%
-\contentsline {subsection}{\numberline {3.8.1}Tokenizzazione}{65}{subsection.3.8.1}%
-\contentsline {subsection}{\numberline {3.8.2}Interprete, valutazione deglle espressioni}{66}{subsection.3.8.2}%
-\contentsline {section}{\numberline {3.9}Parsing deterministico bottom-up}{66}{section.3.9}%
-\contentsline {subsection}{\numberline {3.9.1}Automa di KNOT}{67}{subsection.3.9.1}%
-\contentsline {subsubsection}{Item}{67}{section*.37}%
-\contentsline {subsubsection}{Costruzione dell'automa}{67}{section*.38}%
-\contentsline {subsubsection}{Costruzione del parser}{68}{section*.39}%
-\contentsline {subsubsection}{Parsing con un automa a pila}{68}{section*.40}%
-\contentsline {subsubsection}{Conflitti}{69}{section*.41}%
-\contentsline {subsection}{\numberline {3.9.2}Tabelle GOTO e }{69}{subsection.3.9.2}%
+\contentsline {subsection}{\numberline {3.8.1}Tokenizzazione}{66}{subsection.3.8.1}%
+\contentsline {subsection}{\numberline {3.8.2}Interprete, valutazione deglle espressioni}{68}{subsection.3.8.2}%
+\contentsline {section}{\numberline {3.9}Parsing deterministico bottom-up LR(0)}{69}{section.3.9}%
+\contentsline {subsection}{\numberline {3.9.1}Automa di KNOT}{69}{subsection.3.9.1}%
+\contentsline {subsubsection}{Item}{69}{section*.38}%
+\contentsline {subsubsection}{Costruzione dell'automa}{71}{section*.39}%
+\contentsline {subsubsection}{Costruzione del parser}{71}{section*.40}%
+\contentsline {subsubsection}{Parsing con un automa a pila}{72}{section*.41}%
+\contentsline {subsubsection}{Conflitti}{73}{section*.42}%
+\contentsline {subsection}{\numberline {3.9.2}Tabelle GOTO e ACTIONS}{73}{subsection.3.9.2}%

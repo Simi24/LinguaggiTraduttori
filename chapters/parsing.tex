@@ -1730,15 +1730,66 @@ Una cosa molto interessante nel parser topdwon è che si può mischiare il parsi
 
 Partiamo da una grammatica per le espressioni aritmetiche:
 \begin{lstlisting}
-
+G = Grammar.from_string("""
+Expr -> Term Expr'
+Expr' -> PLUS Term Expr' | epsilon
+Term -> Factor Factor'
+Factor' -> TIMES Factor Factor' | epsilon
+Factor -> LPAR Expr RPAR | NUMBER
+""")
 \end{lstlisting}
 
 Con questa grammatica possiamo costruire la tabella:
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/Parsing/TABLE_parsing_ricorsivo_discendente.png}
+\end{figure}
 
-
-Data questa tabella mi costruisco le funzioni parse per ogni riga della tabella ogni funzione è costruita sulla base di quello che c'è nella riga della tabella (se incontri questo usa questa produzione), consideriamo che nella tabella gli spazi vuoti sono quelli di errore, non ci sono produzioni e devo segnalare l'errore.
+Data questa tabella mi costruisco le funzioni parse per ogni riga della tabella, ogni funzione è costruita sulla base di quello che c'è nella riga della tabella (se incontri questo usa questa produzione), consideriamo che nella tabella gli spazi vuoti sono quelli di errore, non ci sono produzioni e devo segnalare l'errore. Riusciamo a distinguere tra le colonne utilizzando il look-ahed.
 \begin{lstlisting}
+def parse_Expr():
+  if token in {'LPAR', 'NUMBER'}:
+    parse_Term()
+    parse_Exprp()
+  else:
+    warn('Error parsing Expr')
 
+def parse_Exprp():
+  if token in {'RPAR', HASH}:
+    pass # questa e' l'epsilon-produzione
+  elif token == 'PLUS':
+    consume('PLUS')
+    parse_Term()
+    parse_Exprp()
+  else:
+    warn('Error parsing Expr_primo')
+
+def parse_Term():
+  if token in {'LPAR', 'NUMBER'}:
+    parse_Factor()
+    parse_Factorp()
+  else:
+    warn('Error parsing Term')
+
+def parse_Factorp():
+  if token in {'PLUS', 'RPAR', HASH}:
+    pass
+  elif token == 'TIMES':
+    consume('TIMES')
+    parse_Factor()
+    parse_Factorp()
+  else:
+    warn('Error parsing Factor_primo')
+
+def parse_Factor():
+  if token == 'NUMBER':
+    consume('NUMBER')
+  elif token == 'LPAR':
+    consume('LPAR')
+    parse_Expr()
+    consume('RPAR')
+  else:
+    warn('Error parsing Factor')
 \end{lstlisting}
 
 Usa l'uguaglianza con il token (che al momento è un mistero ma rappresenta quello che c'è sul nastro) e in base a questa uguaglianza decide se fare una produzione o meno, se ho delle epsilon regole non faccio niente, altrimenti usano il lato destro, se c'è un terminale lo consumano e se c'è un non terminale fanno il parser di quello.
@@ -1758,7 +1809,7 @@ Quello su cui dobbiamo ragionare è come trasformare le sentenze della grammatic
 
 Questa cosa si chiama TOKENIZZAZIONE, che ha l'obiettivo di prendere una sequenza di caratteri di un alfabeto (tipo ASCII) e trasformarla in una sequenza di simboli.
 
-Abbiamo una prima grammatica che è quella di tokenizzazione, è quella che vedere la stringa vera e propria e ha un insieme di terminali che si chiama alfabeto di macchina (la roba che sta scritta dentro il file). Quella grammatica lì è una collezione di linguaggi regolari, l'idea è che voglio frazionare la stringa usando una serie di grammatiche regolari.
+Abbiamo una prima grammatica che è quella di tokenizzazione, è quella che vede la stringa vera e propria e ha un insieme di terminali che si chiama alfabeto di macchina (la roba che sta scritta dentro il file). Quella grammatica lì è una collezione di linguaggi regolari, l'idea è che voglio frazionare la stringa usando una serie di grammatiche regolari.
 Teniamoci divisi i non terminali e le produzioni, distinguiamo i simboli distinti, tanti linguaggi regolai e il simbolo distinto è il nome di quello che vediamo.
 
 I terminali del parser sono i simboli distinti del tokenizzatore. Il parser lavora dalle teste degli alberi del tokenizzatore e il tokenizzatore lavora dalle stringhe alle teste degli alberi del tokenizzatore.
@@ -1767,34 +1818,113 @@ Il tokenizzatore associa anche ad ogni token il sua value (il token è il simbol
 Quello che vedremo è quella che fa anche ANTLR, che useremo, produce una prima grammatica che è quella di tokenizzazione e poi per ciascun non terminale produce tramite espressioni regolari una grammatica che si mangia i simboli distinti e produce i token.
 La grammatica di tokenizzazione la rappresentiamo come un unione di espressioni regolari:
 \begin{lstlisting}
-
+EPXR_TOKEN2PATTERN = (
+  ('LPAR',   r'\('),
+  ('RPAR',   r'\)'),
+  ('PLUS',   r'\+'),
+  ('TIMES',  r'\*'),
+  ('NUMBER', r'\d+')
+)
 \end{lstlisting}
 
 Adesso devo operativamente usare questa cosa per ottenere il token ed il valore.
-Abbiamo una funzione consume che consuma il token e il valore, quindi la funzione consume è una funzione che mi dice se il token che ho in testa è quello che mi aspetto, se è così lo consumo e lo restituisco. Se non è così mi da errore. Faccio quello che abbiamo visto con le espressioni regolari, metto in or tutte le espressioni regolari e tra quegli or avrò a non null solo il simbolo che ho matchato. Quando ha finito di iterare invece di lanciare un eccezione restituisce un token speciale di tappo.
+Abbiamo una funzione consume che consuma il token e il valore, quindi la funzione consume è una funzione che mi dice se il token che ho in testa è quello che mi aspetto, se è così lo consumo e lo restituisco. Se non è così mi da errore. Faccio quello che abbiamo visto con le espressioni regolari, metto in or tutte le espressioni regolari e tra quegli or avrò a non null solo il simbolo che ho matchato. Quando ha finito di iterare invece di lanciare un eccezione restituisce un token speciale di tappo. Da notare che usiamo due variabili globali token e value per immagazzinare il look-ahed:
 \begin{lstlisting}
-
+def make_consume(word, token2pattern):
+  tokens_re = re.compile('|'.join(f'(?P<{token}>{pattern})' for token, pattern in token2pattern))
+  token_value_iterator = iter((token, value) for match in tokens_re.finditer(word) for token, value in match.groupdict().items() if value)
+  def _advance():
+    global token, value
+    token, value = next(token_value_iterator, (HASH, None))
+  _advance()
+  def consume(expected):
+    if token != expected:
+      warn('Expected {}, found {}'.format(expected, token))
+    else:
+      _advance()
+  return consume
 \end{lstlisting}
 
 \subsection{Interprete, valutazione deglle espressioni}
 Usando il parser posso tornare indietro con il tokenizzatore usando i valori per tirare fuori il valore dell'espressione. Costruiamo delle espressioni ricorsive per cui per ogni terminale mi danno il valore dell'espressione.
 
 \begin{lstlisting}
+def eval_Expr():
+  if token in {'LPAR', 'NUMBER'}:
+    val = eval_Term()
+    val += eval_Exprp()
+    return val
+  warn('Error parsing Expr')
 
+def eval_Exprp():
+  if token in {'RPAR', HASH}:
+    return 0 # questa e' l'unita addittiva
+  elif token == 'PLUS':
+    consume('PLUS')
+    val = eval_Term()
+    val += eval_Exprp()
+    return val
+  warn('Error parsing Expr_primo')
+
+def eval_Term():
+  if token in {'LPAR', 'NUMBER'}:
+    val = eval_Factor()
+    val *= eval_Factorp()
+    return val
+  warn('Error parsing Term')
+
+def eval_Factorp():
+  if token in {'PLUS', 'RPAR', HASH}:
+    return 1 # questa e l'unita moltiplicativa
+  elif token == 'TIMES':
+    consume('TIMES')
+    val = eval_Factor()
+    val *= eval_Factorp()
+    return val
+  warn('Error parsing Factor_primo')
+
+def eval_Factor():
+  if token == 'NUMBER':
+    val = int(value) # la variabile globale modificata da consume
+    consume('NUMBER')
+    return val
+  elif token == 'LPAR':
+    consume('LPAR')
+    val = eval_Expr()
+    consume('RPAR')
+    return val
+  warn('Error parsing Factor')
 \end{lstlisting}
 
 Posso estendere la grammatica per fare in modo che il parser prenda anche delle espressioni regolari, in particolar modo con l'asterisco indichiamo che possiamo mettere N termini come quello. Nelle funzioni indichiamo questa cosa con un while, quindi se ho un asterisco lo metto dentro un while, devo però stare attento a quando devo fermarmi dentro il while:
-\begin{lstlisting}
 
+\begin{lstlisting}
+def eval_Expr():
+  if token in {'LPAR', 'NUMBER'}:
+    val = eval_Term()
+    while token == 'PLUS':
+      consume('PLUS')
+      val += eval_Term()
+    if token in {'RPAR', HASH}: return val
+  warn('Error parsing Expr')
+
+def eval_Term():
+  if token in {'LPAR', 'NUMBER'}:
+    val = eval_Factor()
+    while token == 'TIMES':
+      consume('TIMES')
+      val *= eval_Factor()
+    if token in {'PLUS', 'RPAR', HASH}: return val  
+  warn('Error parsing Term')
 \end{lstlisting}
 
-\section{Parsing deterministico bottom-up}
+\section{Parsing deterministico bottom-up LR(0)}
 
-Ci serve un modo per eliminare il non determinismo, in questo caso non possiamo usare la tabella perche' qui non guardiamo neanche il nastro per scegliere se fare shift o reduce.
+Ci serve un modo per eliminare il non determinismo, in questo caso non possiamo usare la tabella perche' qui non guardiamo neanche il nastro per scegliere se fare shift o reduce. Useremo un automa a pila.
 L'idea e' che la pila sara' sia la sequenza di stati dell'automa, quindi maneggiare la pila sara' come maneggiare con gli stati dell'automa, con la cosa bella che togliere le cose dalla pila significa andare indietro nella storia dell'automa.
 
 \subsection{Automa di KNOT}
-La cosa cruciale e' come costruire questo automa. Usa degli accorgimenti molto simili a quando ci siamo convinti della regolarita' del linguaggio, qui per fare questa costruzione si usa storicamente un'altra rappresentazione.
+La cosa cruciale e' come costruire questo automa. Usa degli accorgimenti molto simili a quando ci siamo convinti della regolarita' del linguaggio, qui per fare questa costruzione si usa storicamente un'altra rappresentazione rispetto a quella che avevamo usato.
 
 \subsubsection{Item}
 Si costruisce a partire da una cosa che si chiama ITEM, un item e' una produzione annotata in cui scelgo un modo per indicare quanta parte della produzione ho mangiato con un pallino che indica che la parte a sinistra del pallino e' stata mangiata e la parte a destra del pallino e' quella che devo ancora mangiare $A \rightarrow \alpha \cdot \beta$.
@@ -1808,19 +1938,52 @@ Una cosa cruciale dell'item e' che quel pallino si sposta verso destra (ogni vol
 
 La libreria Liblet contiene un po' di questa zuppa, partiamo da una grammatica MCD:
 \begin{lstlisting}
-
+G = Grammar.from_string("""
+E -> E - T | T
+T -> n | ( E )
+""")
 \end{lstlisting}
 
 la libreria ci permette di costruire un item a partire da una produzione, e possiamo dirgli di avanzare o meno:
 \begin{lstlisting}
+# Si costruisce dato rhs e lhs (come le produzioni)
 
+A, alpha = G.P[0]
+
+item = Item(A, alpha)
+
+item
+E -> .E - T
+# ha un metodo advance che sposta il punto e un metodo
+# symbol_after_dot che riporta il simbolo che segue il 
+# punto (o None se il punto e' oltre la fine del rhs)
+
+for X in alpha:
+  item = item.advance(X)
+  print(f'item = {item}, symbol_after_dot = {item.symbol_after_dot()}')
+item = E -> E.-T, symbol_after_dot = -
+item = E -> E - .T, symbol_after_dot = T
+item = E -> E - T ., symbol_after_dot = None
 \end{lstlisting}
 
-L'idea di questo item e' che rappresenta un atto di derivazione, se mi trovo a sinistra di un simbolo non terminale potrei proseguire oppure cominciare a consumare una qualunque della alternative che ha quel simbolo a sinistra. Se ho questo item $A \rightarrow \alpha \cdot B \beta$ andando avanti mi trovere a sinistra di un non terminale, che significa trovarsi a sinistra di tutte le sue alternative. L'idea della epsilon chiusura e' che ogni volta che il pallino e' a sinistra di un non terminale mi trovo nella stessa condizione in cui sono a sinistra di una qualsiasi sua alternativa $B_n \rightarrow \cdot \beta$.
+L'idea di questo item e' che rappresenta un atto di derivazione, se mi trovo a sinistra di un simbolo non terminale potrei proseguire oppure cominciare a consumare una qualunque della alternative che ha quel simbolo a sinistra. Se ho questo item $A \rightarrow \alpha \cdot B \beta$ andando avanti mi trovere a sinistra di un non terminale, che significa trovarsi a sinistra di tutte le sue alternative. L'idea della \textbf{epsilon chiusura} e' che ogni volta che il pallino e' a sinistra di un non terminale mi trovo nella stessa condizione in cui sono a sinistra di una qualsiasi sua alternativa $B_n \rightarrow \cdot \beta$. Per ogni item $A \rightarrow \alpha \cdot B \beta$ mettiamo in un set tutte le alternative di B $B \rightarrow \cdot \gamma$ dove $B \rightarrow \gamma$ e' una produzione di B nella grammatican G.
 Trovarsi davanti ad un non terminale significa chidersi che sua alternativa adoperare, mettiamo tutte questa alternative in un set, che ci porta ad avere degli item set.
 Questo e' il codice di questa idea:
-\begin{lstlisting}
 
+\begin{lstlisting}
+@closure
+def epsilon_closure(items, G):
+  added = set()
+  for item in items:
+    X = item.symbol_after_dot()
+    if X is None or X in G.T: continue
+    added |= {Item(X, Beta) for Beta in G.alternatives(X)}
+  return frozenset(items | added)
+# vediamo come si comporta sul set di item che contiene solo l'item
+# ottenuto dalla prima produzione
+
+set(epsilon_closure({Item(*G.P[0])}, G))
+{E -> .E - T, E -> .T, T -> .(E), T -> .n}
 \end{lstlisting}
 
 \subsubsection{Costruzione dell'automa}
@@ -1830,7 +1993,8 @@ Per noi lo stato iniziale dell'automa e' l'epsilon chiusura di S, il pallino a s
 
 La funzione di transizione di questo automa e' la seguente, posso spostarmi da uno stato ai suoi successivi transendo a partire da qualunque simbolo, prendo un elemento dell'item set, chiamo la funzione advance che mi fa andare avanti e questo mi portera' ad avere altri item set che poi chiudo:
 \begin{lstlisting}
-
+def delta(items, X, G):
+  return epsilon_closure({item.advance(X) for item in items if item.advance(X)}, G)
 \end{lstlisting}
 
 Gli stati finali dell'automa, nell'idea iniziale che la condizione che ci piace e' quando terminiamo una produzione, saranno gli item set in cui sono in queste condizioni $A \rightarrow \alpha \cdot$, ho una sola alternativa di sostituzione.
@@ -1840,14 +2004,36 @@ Parto da q0, poi ho una tranzione x che mi porta ad altri stati, li provo tutti,
 Da notare che mettiamo in coda alla grammatica un tappo, cosi' da sapere quando abbiamo finito di mangiare che mi evita di essere in una situazione in cui l'automa mi dica che ha finito quando non e' vero.
 
 L'algoritmo e' la solita visita in ampiezza, mi tengo tutte le transizioni e gli stati e le provo tutte, sposta il pallino e se vede un non terminale ci mette dentro tutte le alternative:
+
 \begin{lstlisting}
-  
+def compute_lr0_automaton(G):
+
+  states = {q0(G)}
+  transitions = []
+  q = Queue([q0(G)])
+  while q:
+    items = q.dequeue()
+    for X in G.T | G.N:
+      next_items = delta(items, X, G)
+      if not next_items: continue
+      transitions.append(Transition(items, X, next_items))
+      if next_items not in states: 
+        states.add(next_items)
+        q.enqueue(next_items)
+
+  return Automaton(
+    states,
+    G.T | G.N,
+    transitions,
+    q0(G),
+    set(state for state in states if len(state) == 1 and first(state).symbol_after_dot() is None)
+  )
 \end{lstlisting}
 
 Esttamente come la costruzione della tabella, la costruzione dell'automa e' l'elemento discriminante che ci dice se la grammatica e' LR(0) o meno. Se la costruzione dell'automa termina con uno stato finale allora la grammatica e' LR(0), altrimenti non lo e' (non ci sono conflitti).
 
-%metti immagine automa, si capisce che fa ogni scelta di consumare qualcosa, poi quando arriva ad un punto in cui il pallino e' davanti ad un non terminale mette tutte le sue alternative
-
+Guardando l'automa si capisce che fa ogni scelta di consumare qualcosa, poi quando arriva ad un punto in cui il pallino e' davanti ad un non terminale mette tutte le sue alternative.
+%TODO:Immagine automa
 \subsubsection{Parsing con un automa a pila}
 L'idea e' che faccio il parsing seguendo l'automa a pila, mi muovo sul grafo e mano mano che mi muovo pusho gli stati sulla pila, quando arrivo ad uno stato finale tolgo quella produzione, torno indietro togliendo quella produzione dallo stato precedente.
 
@@ -1858,7 +2044,26 @@ L'idea cruciale e' che adopero la pila per tenere traccia di quello che sto comp
 Da notare che produciamo una derivazione right-most, ad ogni passo di consume tiro fuori una regola di derivazione, che se poi leggo da sinistra verso destra ho proprio i passi di derivazione partendo da S.
 
 \begin{lstlisting}
+ def lr0parse(lr0a, text, G):
 
+  bid = BottomUpInstantaneousDescription(G, text + [HASH, ])
+  s = Stack([lr0a.q0])
+  
+  while True:
+    top = s.peek()
+    if top in lr0a.F: # REDUCE
+      N, alpha, _ = first(top)
+      bid = bid.reduce(Production(N, alpha))
+      if bid.is_done(): return bid.steps
+      for _ in alpha: s.pop()
+      nxt = first(lr0a.delta(s.peek(), N))
+    else: # SHIFT
+      nxt = first(lr0a.delta(top, bid.head()))
+      if nxt is None: 
+        warn(f'Unexpected token {bid.head()}')
+        return None
+      bid = bid.shift()
+    s.push(nxt) 
 \end{lstlisting}
 
 \subsubsection{Conflitti}
@@ -1873,12 +2078,26 @@ Osserviamo che non possono mai esserci conflitti tra shift, perche' lo shift e' 
 I conflitti LR non si vedono altrimenti se non costruire l'automa e vedere se e' rotto, non c'e' modo di vederli dalla grammatica. 
 Cosa succede quando sono in una situazione di conflitto in LL o LR, un conflitto e' uno stato di non determinismo quindi la strada generalmente e' aumentare il look ahed, quindi se sono in una situazione di conflitto shift-reduce posso aumentare il look ahed e vedere se il prossimo simbolo mi da un indizio su cosa fare, LR(N). E' una strategia noiosissima perche' dovrei vedere molti piu' stati.
 
-\subsection{Tabelle GOTO e }
+\subsection{Tabelle GOTO e ACTIONS}
 Quello che si fa veramente nella pratica e' codificare l'automa, inizialmente si mettonono in una tabella tutti gli stati dell'automa:
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.4\textwidth]{images/Parsing/tabella_states.png}
+\end{figure}
 
 Se quella tabella ha avuto successo ho anche una mappa per fare le sostituzioni quando devo fare le reduce con le transizioni dell'automa:
 
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.4\textwidth]{images/Parsing/tabella_GOTO.png}
+\end{figure}
 
 Poi mi ci vuole la tabella delle azioni, sono nello stato n ma qui cosa faccio shift o reduce, contiene tutti gli stati in cui faccio una reduce ed e' una mappa tra il numero dello stato e la riduzione da fare:
+
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.4\textwidth]{images/Parsing/tabellaACTIONS.png}
+\end{figure}
 
 A questo punto il parser deve tenere il nastro e la pila e quello che devo tenere sulla pila e' la sequenza degli stati, di fatto si puo' provare a scriverlo anche senza le porcate di python che permette di tenere nella pila i set.
