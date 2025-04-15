@@ -1,0 +1,85 @@
+ANTLR e' un parser generator che genera un parser LL top down multi linguaggio. A partire da una grammatica possiamo generare il parser nel linguaggio che vogliamo e ci genera un runtime nel linguaggio che vogliamo per fare funzionare il parser.
+
+La roba interessante e' che ci sono un sacco di grammatiche pronte per ANTLR.
+
+Abbiamo due modi per usare questo strumento:
+\begin{itemize}
+    \item Uso diretto di ANTLR, leggendo il manuale e capire come funziona per scrivere il codice python
+    \item Uso mediato da Liblet, significa che il prof ha scritto un po' di codice in Liblet che serve per importare roba di Java in maniera dinamica
+\end{itemize}
+
+Nel progetto e' una delle cose che possiamo scegliere.
+
+\section{Uso diretto di ANTLR}
+
+La cosa principale di questo strumento e' che ci permette di specificare la grammatica context free che vogliamo usare per produrre il parser tramite file o stringa. Questa grammatica e' fatta cosi', definiamo la grammatica, poi ci sono una serie di regole di tokenizzazzione scritte in maiuscolo alla cui destra c'e' una espressione regolare. Le regole della grammatica (di parsing) iniziano in minuscolo, sono date da un simbolo di tokenizzazzione e poi si possono mettere delle costanti.
+Alcuni token possono essere scartati dalla parte di parsing.
+
+\begin{lstlisting}
+    
+\end{lstlisting}
+
+Adesso il punto cruciale e' utilizzare un tool Java che generi codice Python. Lui genera 4 file:
+\begin{itemize}
+    \item lexer
+    \item parser
+    \item visitor: interfaccia che permette di visitare il tree generato dal parser
+    \item listener: interfaccia
+\end{itemize}
+
+%Esempio di uso
+
+Uso del lexer, possiamo vedere i passi del lexer, il token ci fa vedere anche i caratteri del sorgente che rappresentano il token:
+
+
+Abbiamo visto un esempio piu' complesso di una grammatica di espressioni ed assegnamenti. Vediamo ora come usare il paser, tendenzialmente i parser hanno due modalita' di funzionamento:
+dato che l'albero e' una struttura ricorsiva ci sono due modi per poterne fruire. Ognuno di questi nodi e' relativo ad una delle regole di parsing, i figli sono i token.
+\begin{itemize}
+    \item listener: ha due metodi per ogni regola, entro ed esco. Poi posso invocare un processo di visita che invoca il listener secondo l'ordine che mi aspetto.
+    \item visitor: me lo scrivo io, mi scrivo una funzione per ciascuna regola che sono quelle usate per fare la visita.
+\end{itemize}
+
+Quello che faremo noi a lezione e' usare visitor, perche' a lezione usando LIBLET ci dara' un albero e noi ci scriveremo sempre le visite dell'albero.
+Cosi' e' come useremo il listener, creo una classe che implementa il listener, poi creo l'istanza e lo passo al walker di liblet che lo usa per fare la visita:
+\begin{lstlisting}
+
+\end{lstlisting}
+
+Nel caso del visitor ho sempre la mia classe che implementa il vistor, mi implemento dentro la visita e poi uso la classe per fare la visita che mi sono scritto:
+\begin{lstlisting}
+
+\end{lstlisting}
+
+Fino ad ora non ci siamo mai occupati degli errori, ma in caso di ANTLR si possono specificare degli ascoltatori di errore che hanno un metodo che va invocato ogni volta che lui vede un errore nel lexing o nel parser:
+\begin{lstlisting}
+
+\end{lstlisting}
+
+\section{Uso mediato da Liblet}
+Il modulo ANTLR dentro Liblet ci permette di prendere una grammatica e mi da un oggetto che ha delle competenze.
+In questa grammatica ci sono delle etichette di ANTLR che ci servono a distinguere le alternative di una regola che ha delle alternative che e' comodo perche' se avviene un match di stat non sapremmo cosa abbiamo matchato:
+\begin{lstlisting}
+
+\end{lstlisting}
+
+Dato l'oggetto possiamo fargli fare diverse cose, inizialmente vediamo i tokens, basta un metodo in questo caso:
+\begin{lstlisting}
+
+\end{lstlisting}
+
+Posso avere anche il contesto, che mi da dove partire per il visitor, posso dargli anche il token da cui partire:
+\begin{lstlisting}
+
+
+\end{lstlisting}
+
+L'albero di parsing possiamo produrlo con un metodo tree che produce un tree di liblet con dentro le espressioni:
+\begin{lstlisting}
+
+\end{lstlisting}
+
+ANTLR accetta anche grammatiche malate (ricorsivita', precedenze...) c'e' pero' una malattia che non puo' essere riconosciuta a tempo di analisi, la ambiguita'. Si puo' accendere una spia che ci dice se il parsing e' ambiguo, il suggerimento e' che quando si progetta una nuova grammatica si preparano dei testcase e vedo se il diagnostici mi dice se e' la grammatica e' ambigua. Va acceso il diag = True nel context:
+\begin{lstlisting}
+
+\end{lstlisting}
+
