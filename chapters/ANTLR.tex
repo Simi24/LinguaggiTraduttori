@@ -83,3 +83,48 @@ ANTLR accetta anche grammatiche malate (ricorsivita', precedenze...) c'e' pero' 
 
 \end{lstlisting}
 
+%manca tutta la prima parte della lezione 16, sono arrivato tardi
+
+\subsection{Grammatiche note}
+Possiamo guardare alcune grammatiche note che possono essere utili, ad esempio c'e' una grammatica per l'aritmetica, bella ma l'associativita' a destra la sbaglia.
+Un'altra grammatica carina e CALCULATOR, che parsa le espressioni e permette l'invocazione di funzioni, come il seno o coseno.
+
+Un'altra grammatica super utile, che non viene dal repository standard, ma dal libro di antlr e' la grammatica del linguaggio Cymbol che e' una specie di linguaggetto di programmazione che ha l'invocazione a funzione e gli statement.
+
+La fine di questa cosa e' che e' molto potente, e se incontriamo errori guardiamo in documentazione perche' ci sono alcune porcherie.
+
+\subsection{Ancora su listener e visitor}
+Ora ci assegniamo due compiti ed useremo listener e visitor per fare due cose diverse:
+\begin{itemize}
+    \item Numerare le righe
+    \item Interpretare un linguaggio
+\end{itemize}
+
+Il linguaggio a cui faremo riferimento e' il linguaggio aritmetico con nomi di variabili ed assegnamenti. Una sequenza lineare di istruzioni in cui le istruzioni sono assegnamenti, stampe o espressioni.
+
+%grammatica e programma
+
+Vogliamo contare gli assegnamenti, lo faremo con un listener, sappiamo che ANTLR ci da' un listener che e' un interfaccia da estendere, noi lo estendiamo e implementiamo i metodi che ci interessano. In questo caso ci interessa il numero di assegnamenti, quindi implementiamo il metodo che ci interessa. Poi creiamo un oggetto del listener e lo passiamo al walker di liblet.
+
+\begin{lstlisting}
+
+\end{lstlisting}
+
+Ora vogliamo interpretare il programma, un compito cosi' sofisiticato spesso si realizza piu' facilmente con un visitor, perche' quando scrivo un linguaggio ho in testa per ogni nodo del linguaggio cosa voglio fare, in particolare noi vogliamo che per ogni nodo restituisca il valore del nodo, questo lo puo' fare facilmente se fa una visita in post-ordine conoscendo i valori dei figli.
+
+In questo caso abbiamo solo variabili locali, quindi la cosa piu' facile da fare e' tenere una memoria che e' un dizionario di python, se vediamo un assegnamento prendiamo il nome della variabile, facciamo lo scarico ricorsivo chiamando expr e salviamo tutto in memoria. Se vediamo una variabile, facciamo un lookup in memoria e restituiamo il valore. Se vediamo un numero lo restituiamo direttamente, da notare che quando restituiamo l'intero e' l'unico passo interpretativo perche' stiamo trasformando testo in intero. Abbiamo un espressione che fa la print, non ritorna niente ma fa una print. Dopo di che c'e' la parte di associazione, di nuovo sono divise perche' sono cose divise, in ogni caso visito tramite scarico ricorsivo il lato sinistro e destro e poi guardo il tipo dell'operatore, la visita delle parentesi e' un trucco sintattico che serve ad indicare diverse precedenze, quindi dal punto di vista interpretativo non serve a niente e si puo' solo mangiare.
+%perche' due metodi per la somma e la moltiplicazione? 
+\begin{lstlisting}
+
+\end{lstlisting}
+
+Estendere questo parser su linguaggi piu' difficili e' immediato, la logica e' sempre la stessa, basta estendere le regole di parsing e le regole di interpretazione. Potrebbe essere un buon esempio. Il trucco cruciale e' che il visitatore e' ricorsivo quindi posso quando ho un dubbio su che cosa fare posso usare la ricorsione, per valutare un espressione valuto ricorsivamente i figli e poi faccio l'operazione.
+Il problema di questa cosa e' che la pila di chiamate ricorsive puo' esplodere e non e' facile da tenere sotto controllo, soprattutto se vogliamo dare degli errori durante il parsing. Quindi abbiamo bisogno di fare una traduzione in cui rendo la ricorsione esplicita, significa liberarsi della ricorsione passando ad una struttura iterativa, significa avere una pila di chiamate esplicita invece della pila di record di attivazione, l'idea qui e' che tengo dei risultati parziali. Qui dobbiamo scegliere tra visitor che usa la ricorsione e listener in cui teniamo una pila esplicita per le chiamate.
+
+L'idea in questo caso e' di tenere gli operandi sulla pila e quando siamo pronti a fare l'operazione togliamo gli operandi e mettiamo il risultato intermedio.
+Quindi il listener avra' due strutture dati per funzionare, una memoria per le variabili ed una pila. Qui ho bisogno degli exit perche' voglio sapere cosa fare con quello che c'e' sulla pila dopo che ho guardato i figli. Se usciamo da un assegnamento significa che ho gia' valutato l'espressione e sulla pila c'e' il valore da assegnare, quindi assegniamo in memoria. Se usciamo da un id o un intero significa che valutiamo il valore e mettiamo sulla pila il valore. Quando usicamo da una divisione mi aspetto che i valori dei suoi operandi siano sulla pila messi dalla visita in post-ordine, quindi li tolgo dalla pila e metto il risultato della divisione sulla pila. Se usciamo da una somma invece mettiamo il risultato della somma sulla pila.
+
+\begin{lstlisting}
+
+\end{lstlisting}
+
