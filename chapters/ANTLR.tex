@@ -128,3 +128,28 @@ Quindi il listener avra' due strutture dati per funzionare, una memoria per le v
 
 \end{lstlisting}
 
+\section{Dall'albero di parsing all'AST}
+L'idea e' di partire da un albero di parsing che ha tanti artefatti, toglierli e raggiungere una forma compatta che e' un abstract syntax tree. Per farlo usiamo una funzione ricorsiva.
+
+Abbiamo visto che in ANTLR si puo' mettere del codice direttamente nella grammatica, non lo faremo mai e' troppo doloroso, poi non ha troppo senso tenere legata la grammatica con l'implementazione del parser.
+
+\subsection{Dispatch table}
+Useremo una dispatch table per capire cosa fare quando troviamo una regola (nella table ci saranno le funzioni ricorsive). Inizialmente diciamoche quando troviamo una regola e c'e' nella dispatch table chiamo la sua regola, se non la trovo metto tutti in un catchall:
+\begin{lstlisting}
+    
+\end{lstlisting}
+
+Devo riempire la tabella, in questo caso definiamo le funzioni che ci servono quando vediamo gli operatori, da notare che come scarico ricorsivo non usano se stesse ma chiamano la funzione che usa la dispatch table, poi popolo la table:
+\begin{lstlisting}
+    
+\end{lstlisting}
+
+Si e' visto che liblet implementa una classe TreeWalker che fa questo lavoro della funzione ricorsiva, possiamo dirgli dato un albero che attributo considerare, registrare delle funzioni che usa quando incontra dei simboli (con un annotazione o registrarle esplicitamente), inoltre permette anche di avere un catchall (ne esistono di tanti tipi).
+
+Vediamo un esempio in cui eseguiamo il programma partendo da un ATS, notiamo che occupandoci degli atomi abbiamo solo const e var, non abbiamo bisogno di castare ad Int perche' lo abbiamo gia' fatto nella costruzione dell ATS quando mettevamo dentro il valore di una costante.
+
+\begin{lstlisting}
+    
+\end{lstlisting}
+
+
