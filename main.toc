@@ -62,3 +62,5 @@
 \contentsline {subsection}{\numberline {4.2.2}Ancora su listener e visitor}{79}{subsection.4.2.2}%
 \contentsline {section}{\numberline {4.3}Dall'albero di parsing all'AST}{80}{section.4.3}%
 \contentsline {subsection}{\numberline {4.3.1}Dispatch table}{80}{subsection.4.3.1}%
+\contentsline {section}{\numberline {4.4}Trasformare}{80}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}Trasformare HTML in matrici}{81}{subsection.4.4.1}%

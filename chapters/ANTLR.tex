@@ -152,4 +152,16 @@ Vediamo un esempio in cui eseguiamo il programma partendo da un ATS, notiamo che
     
 \end{lstlisting}
 
+\section{Trasformare}
+Vediamo alcuni esperimenti di trasformazione, in particolare inizialmente vogliamo trasformare un documento JSON in un documento HTML usando ANTLR.
 
+Quello che facciamo noi e' modularizzare il processo, partiamo generando l'AST, si fa con un tree walker ricorsivo che ha la tabella di dispatch che discrimina i nodi in base al nome.
+
+\subsection{Trasformare HTML in matrici}
+L'idea e' che ho acceduto ad una pagina HTML con dentro delle tabelle e io voglio farmi una matrice che rappresenta i dati, e' una trasformazione di dominio.
+
+Per farlo partiamo con il definirci una nostra grammatica invece di usare quella completa assumendo per semplicita' che dentro i td possano esserci solo interi.
+
+Il processo e' sempre lo stesso, arriviamo all'AST e qui la cosa che cambia e' che per fare la trasformazione usiamo una struttura dati esterna, uno stack, quando vediamo i dati li pushiamo dentro lo stack e quando vediamo una row togliamo i figli e li mettiamo dentro un array, alla fine dello stack avremo un array di array che rappresenta la matrice.
+
+Abbiamo visto anche che per costruire la tabella potremmo pensare di decorare i nodi con il numero di riga e colonna mettendo nella radice il numero di righe e colonne, cosi' posso poi precomputare una matrice di dimensioni fisse piena di None e poi riempirla visitando l'AST.
