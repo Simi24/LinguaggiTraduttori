@@ -165,3 +165,19 @@ Per farlo partiamo con il definirci una nostra grammatica invece di usare quella
 Il processo e' sempre lo stesso, arriviamo all'AST e qui la cosa che cambia e' che per fare la trasformazione usiamo una struttura dati esterna, uno stack, quando vediamo i dati li pushiamo dentro lo stack e quando vediamo una row togliamo i figli e li mettiamo dentro un array, alla fine dello stack avremo un array di array che rappresenta la matrice.
 
 Abbiamo visto anche che per costruire la tabella potremmo pensare di decorare i nodi con il numero di riga e colonna mettendo nella radice il numero di righe e colonne, cosi' posso poi precomputare una matrice di dimensioni fisse piena di None e poi riempirla visitando l'AST.
+
+\section{Traspilazione}
+L'idea e' quella di prendere un linguaggio e trasformarlo in un altro linguaggio. Questa cosa ha origini storiche perche' ad esempio il C non veniva compilato ma traspilato in Fortran. Ci sono anche logiche di portabilita' e di ottimizzazione. La portabilita' e' moderna, uno dei linguaggi dominanti nel web e' JavaScript, il problema di questo linguaggio e' che non e' standardizzato e non coinvolge tutti i browser. Ragione per cui e' nata una famiglia di traspilatori che prendono un JS recente e lo trasformandono in un JS piu' vecchio che gira su tutti i browser. Un esempio e' Babel, che e' un traspilatore di JS, ma ce ne sono anche altri. Se esistono costrutti che nelle vecchie versioni non esistono si usano gli SHIM. E' nato anche typescript, che non esiste nei browser, ma viene traspilato in JS.
+
+Noi partiamo da un linguaggio semplice SimpleLang, prima lo traspiliamo in JavaScript (facendo un text to text trsaplilazione). L'altro passo che faremo e' quello di sfruttare il fatto che alcuni linguaggi hanno una rappresentazione di alto livello, ma che e' un po' piu' snella di un testo (non richiede ulteriori processi di parsing) che puo' essere complata dalla VM e generata senza troppo sforzo, quindi tradurremo questo linguaggio verso Python facendo una traduzione da testo verso l'AST di python (AST = Abstract Syntax Tree).
+
+Dobbiamo decidere come fare l'IO, perche' ha senso compilare un programma solo se c'e' un input. Noi per farla facile cercemo di provvedere modi banali per dare l'input ai nostri programmi, l'interprete preleva delle cose dal mondo esterno e le inietta nel programma. Nel nostro caso assumiamo che ci siano tre variabili INPUT e per farla facile faremo che ha un solo OUTPUT. (dice che il progetto di quest'anno non avra' bisogno di librerie esterne).
+
+
+Arrivati infondo alla traspilazione dobbiamo cercare di valorizzare la variabile INPUT, facciamo una funzione che cerca tutti gli input e per ciascuni di essi apre un prompt che prende l'input.
+
+Vediamo ora come cercare di evitare il passo di parsing del linguaggio in cui arriviamo. Scriviamo il linguaggio in una forma in cui l'interprete di python sia in grado di interpretarlo direttamente, python perche' e' fornisce delle API per interagire con gli AST.
+Si puo' usare eval per fare valutare una funzione e generare un parse tree. una volta che abbiamo un AST possiamo compilarlo con la funzione complie di python che vuole sapere cosa sta compilando e in che modalita'.
+Per fare la traspilazione verso l'ATS di python dobbiamo visitare il nostro albero e trasformare i nostri nodi nei loro corrispondenti nodi di python.
+
+Dopo siamo di nuovo nella situazione di dover valorizzare gli input, i programmi di python hanno un dizionario dove pesca le variabili locali, noi possiamo aggiungere con un dizionario di python le variabili che ci servono. Ora li stiamo mettendo a mano noi, potremmo anche pensare di mettere delle funzioni per valorizzare le variabili di input.
