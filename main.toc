@@ -65,3 +65,6 @@
 \contentsline {section}{\numberline {4.4}Trasformare}{80}{section.4.4}%
 \contentsline {subsection}{\numberline {4.4.1}Trasformare HTML in matrici}{81}{subsection.4.4.1}%
 \contentsline {section}{\numberline {4.5}Traspilazione}{81}{section.4.5}%
+\contentsline {section}{\numberline {4.6}Symbol table}{82}{section.4.6}%
+\contentsline {subsection}{\numberline {4.6.1}Scope}{82}{subsection.4.6.1}%
+\contentsline {subsection}{\numberline {4.6.2}Implementazione symbol table}{82}{subsection.4.6.2}%

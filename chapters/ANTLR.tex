@@ -181,3 +181,16 @@ Si puo' usare eval per fare valutare una funzione e generare un parse tree. una 
 Per fare la traspilazione verso l'ATS di python dobbiamo visitare il nostro albero e trasformare i nostri nodi nei loro corrispondenti nodi di python.
 
 Dopo siamo di nuovo nella situazione di dover valorizzare gli input, i programmi di python hanno un dizionario dove pesca le variabili locali, noi possiamo aggiungere con un dizionario di python le variabili che ci servono. Ora li stiamo mettendo a mano noi, potremmo anche pensare di mettere delle funzioni per valorizzare le variabili di input.
+
+\section{Symbol table}
+Assomiglia ad un dizionario, abbiamo due funzioni Bind e Look up con cui mettiamo dentro un simbolo e lo cerchiamo. Hanno anche la competenza di entrare ed uscire da un contesto (ENTER, EXIT) come contesto potremmo intendere classi o funzioni.
+
+\subsection{Scope}
+Nei linguaggi di programmazione moderni le variabili non solo visibili ovunque, ma hanno uno scope. Per farlo utilizzeremo delle opportune symbol table. Esiste uno scoping locale che serve a correggere uno scoping globale. Possiamo avere anche uno scope unico o distinto posso usare lo stesso simbolo in contesti diversi o meno (una variable che si chiama come una funzione).
+
+\subsection{Implementazione symbol table}
+Esistono svariate implementazioni, noi ne vedremo due.
+
+Implementazione deterministica: e' la piu' facile ed adoperiamo una pila di coppie (simbolo, informazione), fare il bind di un simbolo significa fare il push della coppia simbolo informazione. Il lookup e' la ricerca in questa pila dall'alto verso il basso. Enter spingo nella pila qualcosa che sono sicuro di riconoscere tipo null, null, in modo tale che quando faccio exit posso fare una catena di pop fino a che non trovo il separatore, sostanzialmente metto un separatore per i contesti. E' un po' inefficiente perche' quando faccio un lookup devo scorrere tutta la pila, e anche l'exit non e' bellissimo.
+
+Possiamo vedere anche la symbol table come albero di dizionario, avremo dei dizionari (chiave - valore) attaccati al loro papa'. Quindi in questo caso dobbiamo fare una ricerca al massimo lineare nel numero di scope, poi dentro i dizionari la ricerca e'  0(1). La cosa bella e' che quando faccio un enter creo un dizionario vuoto e lo metto come figlio del dizionario padre, quando faccio un exit lo tolgo. In questo caso non abbiamo bisogno di mettere i separatori, perche' il dizionario padre e' il separatore.
