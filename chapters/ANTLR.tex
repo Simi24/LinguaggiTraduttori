@@ -194,3 +194,42 @@ Esistono svariate implementazioni, noi ne vedremo due.
 Implementazione deterministica: e' la piu' facile ed adoperiamo una pila di coppie (simbolo, informazione), fare il bind di un simbolo significa fare il push della coppia simbolo informazione. Il lookup e' la ricerca in questa pila dall'alto verso il basso. Enter spingo nella pila qualcosa che sono sicuro di riconoscere tipo null, null, in modo tale che quando faccio exit posso fare una catena di pop fino a che non trovo il separatore, sostanzialmente metto un separatore per i contesti. E' un po' inefficiente perche' quando faccio un lookup devo scorrere tutta la pila, e anche l'exit non e' bellissimo.
 
 Possiamo vedere anche la symbol table come albero di dizionario, avremo dei dizionari (chiave - valore) attaccati al loro papa'. Quindi in questo caso dobbiamo fare una ricerca al massimo lineare nel numero di scope, poi dentro i dizionari la ricerca e'  0(1). La cosa bella e' che quando faccio un enter creo un dizionario vuoto e lo metto come figlio del dizionario padre, quando faccio un exit lo tolgo. In questo caso non abbiamo bisogno di mettere i separatori, perche' il dizionario padre e' il separatore.
+
+\section{Interpretazione}
+Siamo arrivati al punto in cui possiamo cominciare a parlare di interpretazione, siccome l'albero della AST e' una struttura ricorsiva, possiamo fare una visita ricorsiva dell'albero e interpretare il linguaggio. Questa e' la cosa piu' semplice da fare.
+
+Dopo di che aggiungeremo le funzioni e penseremo a come interpretare le funzioni, con l'idea che le funzioni siano rientranti, quando esco dalla funzione ritorno da dove l'ho chiamata, inoltre i parametri della funzione sono trattati come variabili locali nello scope della funzione, per fare questo useremo la pila dei record di attivazione (chiamato anche call stack).
+
+Come esempio abbiamo sempre il SimpleLang in cui abbiamo introdotto anche il prodExpr. Vediamo come fare l'interprete ricorsivo, inchiodiamo una variabile globale e lo attacchiamo all'interprete, in python si possono incollare attributi agli oggetti, in questo caso lo facciamo con interpreter.GLOBAL\_MEMORY.
+Il difetto dell'interpretazione ricorsiva e' il costo di esecuzione. Non abbiamo fatto robe molto innovative.
+
+\subsection{Funzioni}
+Vogliamo dare una nuova espressivita' al linguaggio, vogliamo dare un nome ad un pezzo di codice per eseguirlo piu' volte. Una funzione ha una collezione di parametri (formali) che operano dal punto di vista concettuale come variabili locali di quella funzione.
+Dobbiamo definire due momenti:
+\begin{itemize}
+    \item Definizione di funzione: nome, parametri formali, corpo
+    \item Invocazione di funzione: nome, parametri concreti (actual) che sono di fatto delle espressioni, potremmo avere il valore di ritorno potremmo quindi dividere le funzioni tra quelle che calcolano un valore a quelle che non lo fanno.
+\end{itemize}
+
+In quasi tutti i linguaggi un espressione costituisce uno statement e noi faremo cosi', inoltre ci occuperemo solamente di funzioni di primo livello, non ci occuperemo di chiusure.
+
+Ci interessa ora vedere come usare la pila di chiamate.
+Inanzitutto abbiamo deciso che un programma e' una sequenza di funzioni, decidiamo che ci sia una funzione che eseguiamo prima delle altre (main), dobbiamo inserire nella grammatica la definizione di funzione con i parametri formali e nell'invocazione delle espressioni possono esserci altre espressioni. Le espressioni diventano statement e ci mettiamo il return statement che e' una comoda convenzione per indicare il valore di ritorno della funzione, questo return e' opzionale se non c'e' return assumeremo che la funzione ritorni None.
+%magari qui mettila la grammatica
+
+Ora vediamo cosa fare quando visitiamo il nodo di dichiarazione di funzione, puo' succedere che ci siano i parametri formali o no, dobbiamo salvarci il nome della funzione e i parametri formali. Da stare attenti che nel caso in cui ci siano i parametri devo andare di due in due perche' devo saltare la virgola.
+
+La chiamata e' sostanzialmente diversa, di nuovo posso avere gli argomenti o meno (anche in questo caso devo saltare la virgola). In questo caso devo creare un nuovo albero che chiama la funzione.
+
+Adesso e' il momento di occuparci della chiamata. Dobbiamo predisporre un record di attivazione, che e' un dizionario in cui mettiamo i parametri formali e i valori dei parametri concreti. Poi dobbiamo fare l'enter della funzione, quindi dobbiamo mettere il record di attivazione nella pila dei record di attivazione, poi dobbiamo visitare il corpo della funzione. Alla fine della visita della funzione dobbiamo fare l'exit della funzione, quindi togliere il record di attivazione dalla pila e restituire il valore di ritorno. E' una pila perche' man mano che chiamo aggiungo record e quando ritorno faccio il pop del record di attivazione. Quindi valutiamo le espressioni dei parametri concreti, prepariamo il record di attivazione, facciamo il push del record di attivazione nella pila, passiamo il controllo, quando ho finito di fare faccio il pop del record di attivazione e restituisco il valore di ritorno.
+
+Aggiungiamo un altro attributo globale ACTIVATION\_RECORDS che e' una pila. La modifica cruciale che invece di cercare i valori nella memoria globale li cerchiamo nella pila di attivazione.
+
+L'interpretazione del programma diventa la raccolta dell'interpretazione delle funzioni, le raccogliamo in un dizionario FUNCTIONS che indicizziamo con il nome delle funzioni e dentro ci mettiamo gli alberi di parsing delle funzioni.
+Interpretare il programma significa fare il visit del main, che come detto prima mettera' in pila il record di attivazione, a sua volta mettera' in pila i record di tutte le funzioni dopo main.
+
+Il caso dell'istruzione return e' gestito aggiungendo una variable locale dal nome \_retval per conservare il valore restituito.
+
+Nella chiamata per preparare il record di attivazione dobbiamo valutare i parametri concreti con le espressioni (che sono proprio numeri nel nostro caso), il record e' un dizionario di coppie.
+
+Abbiamo anche visto come fare il ritorno forzato quando abbiamo un return, ad esempio in un for o in un if, quello che va fatto semplicemente e' che quando valutiamo quelle espressioni non andiamo giu' dritto come al solito, ma dopo il visit(stat) controllo che non ci sia \_retval nella memoria, se c'e' faccio return anche dal for o dall'if.
