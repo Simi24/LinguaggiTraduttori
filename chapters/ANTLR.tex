@@ -233,3 +233,18 @@ Il caso dell'istruzione return e' gestito aggiungendo una variable locale dal no
 Nella chiamata per preparare il record di attivazione dobbiamo valutare i parametri concreti con le espressioni (che sono proprio numeri nel nostro caso), il record e' un dizionario di coppie.
 
 Abbiamo anche visto come fare il ritorno forzato quando abbiamo un return, ad esempio in un for o in un if, quello che va fatto semplicemente e' che quando valutiamo quelle espressioni non andiamo giu' dritto come al solito, ma dopo il visit(stat) controllo che non ci sia \_retval nella memoria, se c'e' faccio return anche dal for o dall'if.
+
+\section{Tipi}
+
+Esistono errori untrapped o trapped. L'obiettivo e' avere un codice safe e well-behaved, per fare questo ci vengono in aiuto i tipi e tutte le tecniche che ci permettono di capire se il programma e' safe.
+
+Alcuni linguaggi non hanno tipi ed altri sono tipizzati, in vario modo misura, nel senso che ogni istanza di variabile o funzione e' decorata con un tipo, questo si chiama tipi espliciti. Ci sono altri sistemi in cui i tipi non sono espliciti, ma sono impliciti, nel senso che il compilatore o l'interprete si occupa di dedurre il tipo della variabile o della funzione.
+Quello che vogliamo vedere adesso e' se un programma e' well-typed, e' ragionevole pensare che se un programma e' ben tipato allora e' anche safe, in realta' questa implicazione e' delicata perche' oltre ad avere un sistema di tipi dobbiamo averlo sound (ben fatto). Attenzione che la soundness nei linguaggi comuni non e' garantita.
+
+Se viviamo nel mondo dei linguaggi tipati espliciti possiamo usare il typechecker che verifica la well-behavior del programma in fase statica. Invece se stiamo nel mondo dei linguaggi untyped o typed implicit dobbiamo fare un controllo dinamico. Tipicamente si usano tecniche miste.
+
+\subsection{Typechecking}
+
+Quello che faremo e' decorare l'AST con delle symbol table, in modo tale che quando visitiamo l'AST possiamo vedere se il programma e' ben tipato o meno. La cosa bella e' che la symbol table e' una struttura dati che ci permette di tenere sotto controllo i tipi delle variabili e delle funzioni, quindi possiamo usarla per fare il type checking.
+
+Siamo in un mondo con solo tipi primitivi, solo interi e stringhe. Possiamo fare tytte le espressioni binarie con entrambi gli operandi interi, confrontare due stringhe oppure sommare due stringhe (ottenendone la concatenazione) o moltiplicare una stringa per un intero (ottenendone la ripetizione). L'enforcing di queste regole non puo' appartenere all'analisi lessicale del linguaggio, ma deve appartenere ad un analisi successiva.

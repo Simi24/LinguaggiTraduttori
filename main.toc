@@ -70,3 +70,6 @@
 \contentsline {subsection}{\numberline {4.6.2}Implementazione symbol table}{82}{subsection.4.6.2}%
 \contentsline {section}{\numberline {4.7}Interpretazione}{82}{section.4.7}%
 \contentsline {subsection}{\numberline {4.7.1}Funzioni}{83}{subsection.4.7.1}%
+\contentsline {section}{\numberline {4.8}Tipi}{84}{section.4.8}%
+\contentsline {subsection}{\numberline {4.8.1}Typechecking}{84}{subsection.4.8.1}%
+\contentsline {chapter}{\numberline {5}Progetto}{86}{chapter.5}%

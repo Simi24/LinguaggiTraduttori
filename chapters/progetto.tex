@@ -1,0 +1,47 @@
+L'idea e' quella di ragionare sulla ricorsione investigando la questione che la ricorsione e' una cosa potente ma costosa. Saltino e' un linguaggio che non ha iterazione, se non ho iterazione devo fare la ricorsione.
+Il punto e' che esistono una serie di strategie per mitigare questo approccio, un esempio di somma senza ricorsione:
+
+\begin{lstlisting}
+    Somma(n){
+        if n == 0 {
+            return 0
+        } else {
+            return n + Somma(n-1)
+        }
+    }
+\end{lstlisting}
+
+Quando la ricorsione e' l'ultimo passo e' facile trasformare la ricorsione in iterazione. Questa cosa si chiama tail recursion, elimini la ricorsione con un while true in cui riassegno quello che ho sulla pila dello stack nel caso della ricorsione, deve essere l'interprete a fare questa cosa.
+
+Quindi l'idea e' inizialmente implementare un interprete ricorsivo e poi implementare un linguaggio saltone che non ha ricorsione, eliminando la ricorsione con un while true eliminando la ricorsione di coda.
+Ocio che con la somma non funziona quella cosa che dicevamo, la ricorsione non e' l'ultima cosa che faccio, devo ritornare i risultati parziali, ma devo ritornare degli accumulati, di fatto mi porto la somma parziale come secondo argomento:
+\begin{lstlisting}
+    Somma(n, acc){
+        if n == 0 {
+            return acc
+        } else {
+            return Somma(n-1, n+acc)
+        }
+    }
+\end{lstlisting}
+
+A questo punto posso scrivere con un while true:
+\begin{lstlisting}
+    Somma(n){
+        acc = 0
+        while true {
+            if n == 0 {
+                return acc
+            } else {
+                new_n = n -1
+                new_acc = n + acc
+                n = new_n
+                acc = new_acc
+            }
+        }
+    }
+\end{lstlisting}
+
+Ha detto che fare l'interprete iterativo rende molto facile la trasformazione in saltone, ovvero togliere la ricorsione.
+
+Gli errori devono essere trappati, non devono vedersi stack trace di python.
