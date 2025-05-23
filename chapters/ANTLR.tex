@@ -248,3 +248,28 @@ Se viviamo nel mondo dei linguaggi tipati espliciti possiamo usare il typechecke
 Quello che faremo e' decorare l'AST con delle symbol table, in modo tale che quando visitiamo l'AST possiamo vedere se il programma e' ben tipato o meno. La cosa bella e' che la symbol table e' una struttura dati che ci permette di tenere sotto controllo i tipi delle variabili e delle funzioni, quindi possiamo usarla per fare il type checking.
 
 Siamo in un mondo con solo tipi primitivi, solo interi e stringhe. Possiamo fare tytte le espressioni binarie con entrambi gli operandi interi, confrontare due stringhe oppure sommare due stringhe (ottenendone la concatenazione) o moltiplicare una stringa per un intero (ottenendone la ripetizione). L'enforcing di queste regole non puo' appartenere all'analisi lessicale del linguaggio, ma deve appartenere ad un analisi successiva.
+
+\section{Interprete Iterativo}
+Vorremmo ora vedere un modo per linearizzare l'albero di parsing, in modo tale da non dover usare la ricorsione per interpretare il linguaggio. L'idea e' quella di usare una pila per tenere traccia delle chiamate e dei risultati intermedi. In questo modo possiamo evitare di usare la ricorsione e rendere l'interprete piu' efficiente.
+
+\subsection{Code threading}
+L'operazione che impariamo a fare e' il code threading (nel senso di filo sartoriale), l'idea e' di tirare un filo attraverso i nodi dell'albero di parsing, poi se taglio gli archi e tengo i nodi che ho infilato nel filo ho una struttura linearizzata, e' una rappresentazione topologica dell'albero in modo tale che posso camminare su questa struttura iterativa eliminando la ricorsione.
+Decoriamo i nodi con un campo che punta al nodo successivo (anche piu' campi se ci sono piu' figli).
+
+E' un ulteriore passo dopo l'AST decorato, la decorazione del nodo la facciamo in modo facile, lo decoriamo con un attributo \_thread\_ e ci mettiamo dentro un nodo, da dire e' facile, il problema di questa cosa e' che la funzione di hash e' mezza complicata, la cosa che dovremmo fare noi e' magari non usare gli alberi di liblet ma usare una roba ad oggetti ed il puntatore al nodo usare un numero, non l'hash del nodo, in modo da evitare la ricorsione infinita.
+
+La cosa cruciale e' concatenare due fili, e' il concatenamento di due liste.
+E' comodo avere due nodi speciali BEGIN e END per indicare all'interprete dove cominciare e dove finire.
+Il modo piu' facile di fare il concatenamento e' una visita in post-ordine, in cui concateno i nodi figli e poi concateno il nodo padre. Vediamo che cosi' facendo torniamo anche da program e block, ma sono solo dei segna posti, non ci interessano, possiamo evitarli.
+
+\subsubsection{Selezione}
+In un if-else vogliamo aggiungere un nodo di unione, valutiamo la condizione, torniamo al nodo if-else cosi' l'interprete valuta se la condizione se e' true va al true altrimenti al false, gli alberi dei true e false vanno ad un nodo JOIN.
+
+\subsubsection{Iterazione}
+Funziona in modo abbastanza analogo, il filo nella condizione valuta se deve eseguire ancora il ciclo o meno.
+
+\subsection{Interprete}
+Per prima cosa, semplifichiamo i fili tenendo da parte solo le istruzioi ed i salti, iniziamo col trasformare ogni nodo (da usare nei salti) in un numero progerssivo, dopo aver numerato i nodi.
+
+Ho bisogno di strutture dati, memoria globale, stack e numero di istruzione (IP, instruction pointer).
+Uso il trucco di tenere in cima alla pila quando c'e' un repeat il numero di volte che devo ripetere il ciclo.

@@ -72,4 +72,9 @@
 \contentsline {subsection}{\numberline {4.7.1}Funzioni}{83}{subsection.4.7.1}%
 \contentsline {section}{\numberline {4.8}Tipi}{84}{section.4.8}%
 \contentsline {subsection}{\numberline {4.8.1}Typechecking}{84}{subsection.4.8.1}%
-\contentsline {chapter}{\numberline {5}Progetto}{86}{chapter.5}%
+\contentsline {section}{\numberline {4.9}Interprete Iterativo}{85}{section.4.9}%
+\contentsline {subsection}{\numberline {4.9.1}Code threading}{85}{subsection.4.9.1}%
+\contentsline {subsubsection}{Selezione}{85}{section*.49}%
+\contentsline {subsubsection}{Iterazione}{85}{section*.50}%
+\contentsline {subsection}{\numberline {4.9.2}Interprete}{86}{subsection.4.9.2}%
+\contentsline {chapter}{\numberline {5}Progetto}{87}{chapter.5}%
